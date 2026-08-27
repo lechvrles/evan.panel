@@ -91,7 +91,7 @@ export default function DashboardSidebar({ open, onClose }) {
   return (
     <aside
       className={cn(
-        "shrink-0 h-screen overflow-hidden",
+        "shrink-0 h-dvh overflow-hidden",
         "fixed top-0 right-0 z-50 w-72 transition-transform duration-300 ease-out",
         open ? "translate-x-0" : "translate-x-full",
         "md:sticky md:top-0 md:translate-x-0 md:transition-[width] md:duration-300",
