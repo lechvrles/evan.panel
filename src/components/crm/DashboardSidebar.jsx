@@ -24,7 +24,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 
-const LOGO = "https://media.base44.com/images/public/6a869b2036726c8f4d4f7204/9b5e3dc2c_-6.png";
+const LOGO = "https://evantechco.com/wp-content/uploads/2022/05/logo.webp";
 
 const navStructure = [
   {
