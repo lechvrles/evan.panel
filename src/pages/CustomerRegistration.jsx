@@ -107,10 +107,10 @@ export default function CustomerRegistration() {
                 onChange={set("phone")}
                 required
                 className="h-11 pr-10"
-                placeholder="+۹۸ ۹۱۲ ۰۰۰ ۰۰۰۰"
+                placeholder="۰۹xxxxxxxxx"
               />
             </Field>
-            <Field label="سمت شغلی در پروژه" icon={Briefcase}>
+            <Field label="سمت پروژه" icon={Briefcase}>
               <Input
                 value={form.title}
                 onChange={set("title")}
@@ -154,7 +154,7 @@ export default function CustomerRegistration() {
                 value={form.project_name}
                 onChange={set("project_name")}
                 className="h-11 pr-10"
-                placeholder="پروژهSample"
+                placeholder="نام پروژه مشتری را وارد کنید"
               />
             </Field>
             <Field label="موقعیت پروژه" icon={MapPin}>
@@ -162,7 +162,7 @@ export default function CustomerRegistration() {
                 value={form.project_location}
                 onChange={set("project_location")}
                 className="h-11 pr-10"
-                placeholder="تهران، خیابانSample"
+                placeholder="مکان پروژه را وارد کنید"
               />
             </Field>
           </div>

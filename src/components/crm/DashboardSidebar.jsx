@@ -91,11 +91,14 @@ export default function DashboardSidebar({ open, onClose }) {
   return (
     <aside
       className={cn(
-        "shrink-0 h-screen sticky top-0 overflow-hidden transition-[width] duration-300 ease-out",
-        open ? "w-64" : "w-0"
+        "shrink-0 h-screen overflow-hidden",
+        "fixed top-0 right-0 z-50 w-72 transition-transform duration-300 ease-out",
+        open ? "translate-x-0" : "translate-x-full",
+        "md:sticky md:top-0 md:translate-x-0 md:transition-[width] md:duration-300",
+        open ? "md:w-64" : "md:w-0"
       )}
     >
-      <div className="w-64 h-full flex flex-col bg-card border-l border-border">
+      <div className="w-72 md:w-64 h-full flex flex-col bg-card border-l border-border">
         {/* هدر داشبورد (۵۲px) — لوگو + دکمه بستن */}
         <div className="flex items-center justify-between px-4 h-[52px] border-b border-border shrink-0">
           <img src={LOGO} alt="EVAN" className="h-[35px] w-auto" />
