@@ -16,6 +16,7 @@ import Profile from '@/pages/Profile';
 import CustomerDetail from '@/pages/CustomerDetail';
 import CustomersPage from '@/pages/CustomersPage';
 import CustomerEdit from '@/pages/CustomerEdit';
+import { Analytics } from '@vercel/analytics/react';
 // Add page imports here
 
 function App() {
@@ -42,6 +43,7 @@ function App() {
           </Routes>
         </Router>
         <Toaster />
+        <Analytics />
       </QueryClientProvider>
     </AuthProvider>
   )
