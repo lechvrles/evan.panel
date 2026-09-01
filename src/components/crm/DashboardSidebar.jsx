@@ -1,5 +1,3 @@
-import { ShieldCheck } from "lucide-react"; // اگه lucide-react از قبل ایمپورت شده، فقط ShieldCheck رو به همون خط اضافه کنید
-import { roleLabel } from "@/lib/roles";
 import React, { useState } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
