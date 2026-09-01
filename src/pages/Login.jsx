@@ -1,15 +1,22 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogIn, Mail, Lock, Loader2 } from "lucide-react";
+import { LogIn, User, Lock, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
+
+// یوزرنیم داخل جدول employees با یک ایمیل داخلی (نامرئی برای کاربر) در
+// Supabase Auth نگاشت شده تا هم رمز عبور به‌صورت امن هش/مدیریت بشه، هم
+// کارمندها فقط با «نام کاربری» کار کنن، نه ایمیل.
+const INTERNAL_EMAIL_DOMAIN = "evan-crm.internal";
+const toInternalEmail = (username) =>
+  `${username.trim().toLowerCase()}@${INTERNAL_EMAIL_DOMAIN}`;
 
 export default function Login() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,13 +27,13 @@ export default function Login() {
     setLoading(true);
     try {
       const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
+        email: toInternalEmail(username),
         password,
       });
       if (signInError) throw signInError;
       navigate("/", { replace: true });
     } catch (err) {
-      setError("ایمیل یا رمز عبور نامعتبر است");
+      setError("نام کاربری یا رمز عبور نامعتبر است");
     } finally {
       setLoading(false);
     }
@@ -46,29 +53,24 @@ export default function Login() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="email">ایمیل</Label>
+          <Label htmlFor="username">نام کاربری</Label>
           <div className="relative">
-            <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <User className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
-              id="email"
-              type="email"
-              autoComplete="email"
+              id="username"
+              type="text"
+              autoComplete="username"
               autoFocus
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              placeholder="نام کاربری"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               className="pr-10 h-12"
               required
             />
           </div>
         </div>
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="password">رمز عبور</Label>
-            <Link to="/forgot-password" className="text-xs text-primary hover:underline">
-              فراموشی رمز عبور؟
-            </Link>
-          </div>
+          <Label htmlFor="password">رمز عبور</Label>
           <div className="relative">
             <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
