@@ -15,6 +15,17 @@ import {
   FolderKanban,
   MapPin,
 } from "lucide-react";
+
+// فقط حروف فارسی، فاصله و نیم‌فاصله مجازن (برای نام و نام‌خانوادگی)
+const PERSIAN_NAME_REGEX = /^[\u0600-\u06FF\s\u200C]+$/;
+// فقط حروف/عدد انگلیسی و کاراکترهای مجاز ایمیل
+const EMAIL_CHARS_REGEX = /[^a-zA-Z0-9@._%+-]/g;
+const EMAIL_FORMAT_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+const stripToPersian = (value) => value.replace(/[^\u0600-\u06FF\s\u200C]/g, "");
+const stripToDigits = (value) => value.replace(/\D/g, "").slice(0, 11);
+const stripToEmailChars = (value) => value.replace(EMAIL_CHARS_REGEX, "");
+
 export default function CustomerRegistration() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
@@ -26,14 +37,49 @@ export default function CustomerRegistration() {
     project_name: "",
     project_location: "",
   });
+  const [fieldErrors, setFieldErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const setName = (k) => (e) =>
+    setForm((f) => ({ ...f, [k]: stripToPersian(e.target.value) }));
+
+  const setPhone = (e) =>
+    setForm((f) => ({ ...f, phone: stripToDigits(e.target.value) }));
+
+  const setEmail = (e) =>
+    setForm((f) => ({ ...f, email: stripToEmailChars(e.target.value) }));
+
+  const validate = () => {
+    const errors = {};
+
+    if (!form.first_name.trim() || !PERSIAN_NAME_REGEX.test(form.first_name.trim())) {
+      errors.first_name = "نام باید فقط حروف فارسی باشد";
+    }
+    if (!form.last_name.trim() || !PERSIAN_NAME_REGEX.test(form.last_name.trim())) {
+      errors.last_name = "نام خانوادگی باید فقط حروف فارسی باشد";
+    }
+    if (form.phone.length !== 11) {
+      errors.phone = "شماره تلفن باید دقیقاً ۱۱ رقم باشد";
+    }
+    if (form.email.trim() && !EMAIL_FORMAT_REGEX.test(form.email.trim())) {
+      errors.email = "فرمت ایمیل صحیح نیست (مثال: name@example.com)";
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    if (!validate()) {
+      setError("لطفاً خطاهای فرم را برطرف کنید");
+      return;
+    }
     setSaving(true);
     try {
       const { error: insertError } = await supabase.from("customers").insert([form]);
@@ -63,7 +109,7 @@ export default function CustomerRegistration() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6" noValidate>
         {/* مرحله ۱ — اطلاعات شخصی */}
         <section className="rounded-[28px] bg-card border border-border overflow-hidden shadow-sm">
           <div className="px-6 sm:px-8 pt-6 pb-5 border-b border-border bg-gradient-to-bl from-accent/60 to-transparent">
@@ -83,28 +129,31 @@ export default function CustomerRegistration() {
           </div>
 
           <div className="p-6 sm:p-8 grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <Field label="نام" required icon={User}>
+            <Field label="نام" required icon={User} error={fieldErrors.first_name}>
               <Input
                 value={form.first_name}
-                onChange={set("first_name")}
+                onChange={setName("first_name")}
                 required
                 className="h-11 pr-10"
                 placeholder="نام"
               />
             </Field>
-            <Field label="نام خانوادگی" required icon={User}>
+            <Field label="نام خانوادگی" required icon={User} error={fieldErrors.last_name}>
               <Input
                 value={form.last_name}
-                onChange={set("last_name")}
+                onChange={setName("last_name")}
                 required
                 className="h-11 pr-10"
                 placeholder="نام خانوادگی"
               />
             </Field>
-            <Field label="شماره تلفن" required icon={Phone}>
+            <Field label="شماره تلفن" required icon={Phone} error={fieldErrors.phone}>
               <Input
+                type="tel"
+                inputMode="numeric"
+                maxLength={11}
                 value={form.phone}
-                onChange={set("phone")}
+                onChange={setPhone}
                 required
                 className="h-11 pr-10"
                 placeholder="۰۹xxxxxxxxx"
@@ -118,12 +167,13 @@ export default function CustomerRegistration() {
                 placeholder="مدیر پروژه"
               />
             </Field>
-            <Field label="ایمیل" icon={Mail}>
+            <Field label="ایمیل" icon={Mail} error={fieldErrors.email}>
               <Input
                 type="email"
+                dir="ltr"
                 value={form.email}
-                onChange={set("email")}
-                className="h-11 pr-10"
+                onChange={setEmail}
+                className="h-11 pr-10 text-left"
                 placeholder="customer@example.com"
               />
             </Field>
@@ -202,7 +252,7 @@ export default function CustomerRegistration() {
   );
 }
 
-function Field({ label, required, icon: Icon, children }) {
+function Field({ label, required, icon: Icon, error, children }) {
   return (
     <div className="space-y-2">
       <Label className="text-sm font-medium">
@@ -215,6 +265,7 @@ function Field({ label, required, icon: Icon, children }) {
         )}
         {children}
       </div>
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
 }
