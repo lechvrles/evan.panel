@@ -1,10 +1,14 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { PanelRight, Search, Bell, Mail, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useNotifications } from "@/lib/NotificationsContext";
 
 const LOGO = "https://media.base44.com/images/public/6a869b2036726c8f4d4f7204/9b5e3dc2c_-6.png";
 
 export default function CrmHeader({ dashboardOpen, onToggleDashboard }) {
+  const navigate = useNavigate();
+  const { unreadCount } = useNotifications();
   const [searchOpen, setSearchOpen] = useState(false);
 
   return (
@@ -44,17 +48,14 @@ export default function CrmHeader({ dashboardOpen, onToggleDashboard }) {
           {/* چپ: پیام‌ها، اعلان‌ها، جستجو (فقط در حالت بسته) */}
           <div className="flex items-center gap-1 text-muted-foreground shrink-0">
             <button
-              className="w-9 h-9 rounded-xl hover:bg-accent grid place-items-center transition-colors"
-              aria-label="پیام‌ها"
-            >
-              <Mail className="w-[18px] h-[18px]" />
-            </button>
-            <button
+              onClick={() => navigate("/notifications")}
               className="relative w-9 h-9 rounded-xl hover:bg-accent grid place-items-center transition-colors"
               aria-label="اعلان‌ها"
             >
               <Bell className="w-[18px] h-[18px]" />
-              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-destructive" />
+              {unreadCount > 0 && (
+                <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-destructive" />
+              )}
             </button>
             {!dashboardOpen && (
               <button

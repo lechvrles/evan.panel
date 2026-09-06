@@ -15,11 +15,14 @@ import CustomerDetail from '@/pages/CustomerDetail';
 import CustomersPage from '@/pages/CustomersPage';
 import CustomerEdit from '@/pages/CustomerEdit';
 import Employees from '@/pages/Employees';
+import { NotificationsProvider } from '@/lib/NotificationsContext';
+import Notifications from '@/pages/Notifications';
 // Add page imports here
 
 function App() {
   return (
-    <AuthProvider>
+  <AuthProvider>
+    <NotificationsProvider>
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <ScrollToTop />
@@ -34,6 +37,7 @@ function App() {
                 <Route path="/customers/:id" element={<CustomerDetail />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/employees" element={<Employees />} />
+                <Route path="/notifications" element={<Notifications />} />
               </Route>
             </Route>
             <Route path="*" element={<PageNotFound />} />
@@ -41,7 +45,8 @@ function App() {
         </Router>
         <Toaster />
       </QueryClientProvider>
-    </AuthProvider>
+    </NotificationsProvider>
+  </AuthProvider>
   )
 }
 

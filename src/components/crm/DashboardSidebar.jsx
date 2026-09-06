@@ -13,10 +13,8 @@ import {
   LayoutGrid,
   ChevronDown,
   ChevronLeft,
-  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { roleLabel } from "@/lib/roles";
 import { useAuth } from "@/lib/AuthContext";
 import { Image } from "@/components/ui/image";
 import {
@@ -28,7 +26,7 @@ import {
 
 const LOGO = "https://evantechco.com/wp-content/uploads/2022/05/logo.webp";
 
-const baseNavStructure = [
+const navStructure = [
   {
     type: "section",
     label: "اصلی",
@@ -55,21 +53,6 @@ export default function DashboardSidebar({ open, onClose }) {
   const navigate = useNavigate();
   const { employee: current, logout } = useAuth();
   const location = useLocation();
-  const navStructure = [
-    ...baseNavStructure,
-    ...(current?.role === "admin"
-      ? [
-          {
-            type: "section",
-            label: "مدیریت",
-            icon: ShieldCheck,
-            items: [
-              { to: "/employees", label: "مدیریت کارمندان", icon: UserPlus, end: true },
-            ],
-          },
-        ]
-      : []),
-  ];
 
   const [expanded, setExpanded] = useState(() => {
     const set = new Set();
@@ -209,7 +192,7 @@ export default function DashboardSidebar({ open, onClose }) {
                     {current?.full_name || "کارمند"}
                   </p>
                   <p className="text-xs text-muted-foreground truncate">
-                    {current?.position || (current?.role ? roleLabel(current.role) : current?.username)}
+                    {current?.role || current?.email}
                   </p>
                 </div>
                 <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" />

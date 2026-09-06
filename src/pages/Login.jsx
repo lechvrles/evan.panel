@@ -7,9 +7,6 @@ import { Label } from "@/components/ui/label";
 import { LogIn, User, Lock, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 
-// یوزرنیم داخل جدول employees با یک ایمیل داخلی (نامرئی برای کاربر) در
-// Supabase Auth نگاشت شده تا هم رمز عبور به‌صورت امن هش/مدیریت بشه، هم
-// کارمندها فقط با «نام کاربری» کار کنن، نه ایمیل.
 const INTERNAL_EMAIL_DOMAIN = "evan-crm.internal";
 const toInternalEmail = (username) =>
   `${username.trim().toLowerCase()}@${INTERNAL_EMAIL_DOMAIN}`;
@@ -26,11 +23,22 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: toInternalEmail(username),
         password,
       });
       if (signInError) throw signInError;
+
+      if (signInData?.user) {
+        const formatted = new Intl.DateTimeFormat("fa-IR", {
+          dateStyle: "full",
+          timeStyle: "short",
+        }).format(new Date());
+        await supabase
+          .from("notifications")
+          .insert([{ employee_id: signInData.user.id, message: `ورود به سامانه در ${formatted}` }]);
+      }
+
       navigate("/", { replace: true });
     } catch (err) {
       setError("نام کاربری یا رمز عبور نامعتبر است");

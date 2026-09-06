@@ -1,7 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
-// این فایل فقط سمت سرور (Vercel Serverless Function) اجرا میشه؛ کلید
-// service role هرگز به مرورگر ارسال نمیشه.
+
 export function getAdminClient() {
   const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
