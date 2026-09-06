@@ -74,18 +74,18 @@ export default function CrmHeader({ dashboardOpen, onToggleDashboard }) {
       {searchOpen && !dashboardOpen && (
         <div className="fixed top-[52px] inset-x-0 bottom-0 z-40">
           <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/30 backdrop-blur-md"
             onClick={() => setSearchOpen(false)}
           />
           <div className="absolute top-0 inset-x-0 mx-auto max-w-2xl px-4 pt-4">
-            <div className="bg-card rounded-2xl shadow-2xl border border-border p-3">
+            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-black p-3">
               <div className="relative">
                 <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
                   type="text"
                   autoFocus
                   placeholder="جستجوی مشتریان، سفارش‌ها، محصولات…"
-                  className="w-full h-12 pr-11 pl-10 rounded-xl bg-background border border-border text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
+                  className="w-full h-12 pr-11 pl-10 rounded-xl bg-transparent border border-border text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
                 />
                 <button
                   onClick={() => setSearchOpen(false)}
