@@ -73,27 +73,29 @@ export default function CrmHeader({ dashboardOpen, onToggleDashboard }) {
       {/* پنل جستجوی تاشو (فقط در حالت بسته) */}
       {searchOpen && !dashboardOpen && (
         <div className="fixed top-[52px] inset-x-0 bottom-0 z-40">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setSearchOpen(false)}
+          />
           <div className="absolute top-0 inset-x-0 mx-auto max-w-2xl px-4 pt-4">
-            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-black p-3">
-              <div className="relative">
-                <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  autoFocus
-                  placeholder="جستجوی مشتریان، سفارش‌ها، محصولات…"
-                  className="w-full h-12 pr-11 pl-10 rounded-xl bg-transparent border border-border text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
-                />
-                <button
-                  onClick={() => setSearchOpen(false)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg hover:bg-accent grid place-items-center text-muted-foreground"
-                  aria-label="بستن"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+            <div className="relative flex items-center h-14 rounded-full bg-card shadow-[0_12px_32px_rgba(0,0,0,0.16)] ring-1 ring-black/[0.06]">
+              <Search className="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                autoFocus
+                placeholder="جستجوی مشتریان، سفارش‌ها، محصولات…"
+                className="w-full h-full pr-12 pl-12 rounded-full bg-transparent text-sm placeholder:text-muted-foreground focus:outline-none"
+              />
+              <button
+                onClick={() => setSearchOpen(false)}
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full hover:bg-accent grid place-items-center text-muted-foreground transition-colors"
+                aria-label="بستن"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
           </div>
-        </div>
+        </div>   
       )}
     </>
   );
