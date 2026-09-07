@@ -73,10 +73,6 @@ export default function CrmHeader({ dashboardOpen, onToggleDashboard }) {
       {/* پنل جستجوی تاشو (فقط در حالت بسته) */}
       {searchOpen && !dashboardOpen && (
         <div className="fixed top-[52px] inset-x-0 bottom-0 z-40">
-          <div
-            className="absolute inset-0 bg-black/30 backdrop-blur-md"
-            onClick={() => setSearchOpen(false)}
-          />
           <div className="absolute top-0 inset-x-0 mx-auto max-w-2xl px-4 pt-4">
             <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-black p-3">
               <div className="relative">
