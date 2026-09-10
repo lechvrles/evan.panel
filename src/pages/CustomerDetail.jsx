@@ -13,9 +13,13 @@ import {
   MapPin,
   CalendarClock,
   StickyNote,
+  PhoneCall,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { Image } from "@/components/ui/image";
 import { cn } from "@/lib/utils";
+import { PhoneCall, CheckCircle2, XCircle } from "lucide-react";
 
 export default function CustomerDetail() {
   const { id } = useParams();
@@ -115,6 +119,7 @@ export default function CustomerDetail() {
           {customer.title && (
             <p className="text-sm text-muted-foreground mt-1">{customer.title}</p>
           )}
+          <CallButton phone={customer.phone} customerName={fullName} />
         </div>
 
         {/* قالب مستطیل عمودی — جزئیات دیگر */}
@@ -167,6 +172,72 @@ function InfoRow({ icon: Icon, label, value }) {
           {value ? value : "—"}
         </p>
       </div>
+    </div>
+  );
+}
+
+function CallButton({ phone, customerName }) {
+  const [status, setStatus] = useState("idle"); // idle | calling | success | error
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const handleCall = async () => {
+    if (!phone || status === "calling") return;
+    setStatus("calling");
+    setErrorMsg("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/call-customer", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ phone }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || "برقراری تماس ناموفق بود");
+      setStatus("success");
+      setTimeout(() => setStatus("idle"), 2500);
+    } catch (err) {
+      setStatus("error");
+      setErrorMsg(err.message || "خطا در برقراری تماس");
+      setTimeout(() => setStatus("idle"), 3000);
+    }
+  };
+
+  return (
+    <div className="mt-4 flex flex-col items-center gap-2">
+      <button
+        type="button"
+        onClick={handleCall}
+        disabled={!phone || status === "calling"}
+        className={cn(
+          "w-14 h-14 rounded-full grid place-items-center transition-all shadow-sm",
+          status === "success"
+            ? "bg-emerald-500 text-white"
+            : status === "error"
+            ? "bg-destructive text-destructive-foreground"
+            : "bg-primary text-primary-foreground hover:opacity-90 active:scale-95",
+          (!phone || status === "calling") && "opacity-60 cursor-not-allowed"
+        )}
+        aria-label={`تماس با ${customerName}`}
+        title={phone ? `تماس با ${phone}` : "شماره تلفن ثبت نشده"}
+      >
+        {status === "calling" ? (
+          <Loader2 className="w-5 h-5 animate-spin" />
+        ) : status === "success" ? (
+          <CheckCircle2 className="w-6 h-6" />
+        ) : status === "error" ? (
+          <XCircle className="w-6 h-6" />
+        ) : (
+          <PhoneCall className="w-5 h-5" />
+        )}
+      </button>
+      <p className="text-xs text-muted-foreground h-4">
+        {status === "calling" && "در حال برقراری تماس…"}
+        {status === "success" && "تماس برقرار شد"}
+        {status === "error" && (errorMsg || "خطا در تماس")}
+      </p>
     </div>
   );
 }

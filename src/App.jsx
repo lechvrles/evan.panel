@@ -17,6 +17,7 @@ import CustomerEdit from '@/pages/CustomerEdit';
 import Employees from '@/pages/Employees';
 import { NotificationsProvider } from '@/lib/NotificationsContext';
 import Notifications from '@/pages/Notifications';
+import CallHistory from '@/pages/CallHistory';
 // Add page imports here
 
 function App() {
@@ -38,6 +39,7 @@ function App() {
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/employees" element={<Employees />} />
                 <Route path="/notifications" element={<Notifications />} />
+                <Route path="/calls" element={<CallHistory />} />
               </Route>
             </Route>
             <Route path="*" element={<PageNotFound />} />

@@ -14,6 +14,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ShieldCheck,
+  PhoneCall,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { roleLabel } from "@/lib/roles";
@@ -43,6 +44,12 @@ const baseNavStructure = [
       { to: "/customers", label: "لیست مشتریان", icon: ListIcon, end: true },
       { to: "/customers/register", label: "ثبت مشتری", icon: UserPlus },
     ],
+  },
+  {
+    type: "section",
+    label: "تماس‌ها",
+    icon: PhoneCall,
+    items: [{ to: "/calls", label: "تاریخچه تماس‌ها", icon: PhoneCall, end: true }],
   },
 ];
 

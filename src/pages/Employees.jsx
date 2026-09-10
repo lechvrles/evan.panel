@@ -262,6 +262,17 @@ export default function Employees() {
                     }}
                     className="h-7 mt-1 text-xs px-2 max-w-[160px]"
                   />
+                  <Input
+                    defaultValue={emp.extension || ""}
+                    placeholder="داخلی…"
+                    onBlur={(e) => {
+                      const value = e.target.value.trim();
+                      if (value !== (emp.extension || "")) {
+                        handleRoleOrStatusChange(emp.id, { extension: value });
+                      }
+                    }}
+                    className="h-7 mt-1 text-xs px-2 max-w-[100px]"
+                  />
                 </div>
 
                 <Select
