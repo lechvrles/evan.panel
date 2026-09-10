@@ -13,9 +13,6 @@ import {
   MapPin,
   CalendarClock,
   StickyNote,
-  PhoneCall,
-  CheckCircle2,
-  XCircle,
 } from "lucide-react";
 import { Image } from "@/components/ui/image";
 import { cn } from "@/lib/utils";
