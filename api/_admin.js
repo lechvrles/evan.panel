@@ -48,3 +48,39 @@ export async function requireAdmin(req, admin) {
 
   return { callerId: userData.user.id };
 }
+
+export async function requireEmployee(req, admin) {
+  const authHeader = req.headers.authorization || "";
+  const token = authHeader.replace(/^Bearer\s+/i, "");
+  if (!token) {
+    const err = new Error("توکن احراز هویت ارسال نشده است");
+    err.status = 401;
+    throw err;
+  }
+
+  const { data: userData, error: userError } = await admin.auth.getUser(token);
+  if (userError || !userData?.user) {
+    const err = new Error("نشست نامعتبر است");
+    err.status = 401;
+    throw err;
+  }
+
+  const { data: emp, error: empError } = await admin
+    .from("employees")
+    .select("id, status")
+    .eq("id", userData.user.id)
+    .single();
+
+  if (empError || !emp) {
+    const err = new Error("کارمند یافت نشد");
+    err.status = 403;
+    throw err;
+  }
+  if (emp.status === "inactive") {
+    const err = new Error("این حساب غیرفعال است");
+    err.status = 403;
+    throw err;
+  }
+
+  return { callerId: userData.user.id };
+}
