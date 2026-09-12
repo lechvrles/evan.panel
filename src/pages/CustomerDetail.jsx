@@ -13,10 +13,14 @@ import {
   MapPin,
   CalendarClock,
   StickyNote,
+  PhoneCall,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { Image } from "@/components/ui/image";
 import { cn } from "@/lib/utils";
-import { PhoneCall, CheckCircle2, XCircle } from "lucide-react";
+import CallTimeline from "@/components/crm/CallTimeline";
+import CallReportPanel from "@/components/crm/CallReportPanel";
 
 export default function CustomerDetail() {
   const { id } = useParams();
@@ -24,6 +28,10 @@ export default function CustomerDetail() {
   const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportInitialStart, setReportInitialStart] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -75,18 +83,13 @@ export default function CustomerDetail() {
   const fullName = `${customer.first_name} ${customer.last_name}`;
   const editTo = `/customers/${id}/edit`;
 
-  const editButton = (label) => (
-    <button
-      onClick={() => navigate(editTo)}
-      aria-label={label}
-      className="absolute top-3 left-3 w-9 h-9 rounded-full border border-foreground text-foreground grid place-items-center hover:bg-accent transition-colors"
-    >
-      <Pencil className="w-4 h-4" />
-    </button>
-  );
+  const openReport = (startTs) => {
+    setReportInitialStart(startTs);
+    setReportOpen(true);
+  };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       <button
         onClick={() => navigate("/customers")}
         className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -95,62 +98,93 @@ export default function CustomerDetail() {
         بازگشت به لیست
       </button>
 
-      {/* ستون راست (یک‌سوم) — قالب مربعی + قالب مستطیلی */}
-      <div className="lg:w-1/3 space-y-6">
-        {/* قالب مربعی — عکس، نام و سمت پروژه (وسط‌چین) */}
-        <div className="relative rounded-[28px] bg-card border border-border overflow-hidden shadow-sm aspect-square flex flex-col items-center justify-center text-center p-6">
-          {editButton("ویرایش مشتری")}
-          <div className="w-24 h-24 rounded-full overflow-hidden bg-accent grid place-items-center">
-            {customer.avatar_url ? (
-              <Image
-                src={customer.avatar_url}
-                alt={fullName}
-                fittingType="fill"
-                className="w-full h-full"
-              />
-            ) : (
-              <User className="w-10 h-10 text-muted-foreground" />
-            )}
-          </div>
-          <h1 className="font-heading text-xl font-semibold mt-4">{fullName}</h1>
-          {customer.title && (
-            <p className="text-sm text-muted-foreground mt-1">{customer.title}</p>
-          )}
-          <CallButton phone={customer.phone} customerName={fullName} />
-        </div>
-
-        {/* قالب مستطیل عمودی — جزئیات دیگر */}
-        <div className="rounded-[28px] bg-card border border-border overflow-hidden shadow-sm">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-gradient-to-bl from-accent/60 to-transparent">
-            <h2 className="font-heading text-base font-semibold">جزئیات دیگر</h2>
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+        {/* ستون راست — قالب مربعی + قالب مستطیلی */}
+        <div className="w-full lg:w-72 shrink-0 space-y-6">
+          {/* قالب مربعی — عکس، نام، دکمه تماس */}
+          <div className="relative rounded-[28px] bg-card border border-border overflow-hidden shadow-sm aspect-square flex flex-col items-center justify-center text-center p-6">
             <button
               onClick={() => navigate(editTo)}
               aria-label="ویرایش مشتری"
-              className="w-9 h-9 rounded-full border border-foreground text-foreground grid place-items-center hover:bg-accent transition-colors"
+              className="absolute top-3 left-3 w-9 h-9 rounded-full border border-foreground text-foreground grid place-items-center hover:bg-accent transition-colors"
             >
               <Pencil className="w-4 h-4" />
             </button>
-          </div>
-          <div className="px-6 py-4">
-            <InfoRow icon={Phone} label="شماره تلفن" value={customer.phone} />
-            <InfoRow icon={Mail} label="ایمیل" value={customer.email} />
-            <InfoRow icon={FolderKanban} label="نام پروژه" value={customer.project_name} />
-            <InfoRow icon={MapPin} label="موقعیت پروژه" value={customer.project_location} />
-            <InfoRow
-              icon={CalendarClock}
-              label="تاریخ ثبت"
-              value={
-                customer.created_at
-                  ? new Date(customer.created_at).toLocaleDateString("fa-IR")
-                  : ""
-              }
-            />
-            {customer.notes && (
-              <InfoRow icon={StickyNote} label="یادداشت" value={customer.notes} />
+            <div className="w-24 h-24 rounded-full overflow-hidden bg-accent grid place-items-center">
+              {customer.avatar_url ? (
+                <Image
+                  src={customer.avatar_url}
+                  alt={fullName}
+                  fittingType="fill"
+                  className="w-full h-full"
+                />
+              ) : (
+                <User className="w-10 h-10 text-muted-foreground" />
+              )}
+            </div>
+            <h1 className="font-heading text-xl font-semibold mt-4">{fullName}</h1>
+            {customer.title && (
+              <p className="text-sm text-muted-foreground mt-1">{customer.title}</p>
             )}
+
+            <CallButton
+              phone={customer.phone}
+              customerName={fullName}
+              onCallSuccess={(startTs) => openReport(startTs)}
+            />
+          </div>
+
+          {/* قالب مستطیل عمودی — جزئیات دیگر */}
+          <div className="rounded-[28px] bg-card border border-border overflow-hidden shadow-sm">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-gradient-to-bl from-accent/60 to-transparent">
+              <h2 className="font-heading text-base font-semibold">جزئیات دیگر</h2>
+              <button
+                onClick={() => navigate(editTo)}
+                aria-label="ویرایش مشتری"
+                className="w-9 h-9 rounded-full border border-foreground text-foreground grid place-items-center hover:bg-accent transition-colors"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="px-6 py-4">
+              <InfoRow icon={Phone} label="شماره تلفن" value={customer.phone} />
+              <InfoRow icon={Mail} label="ایمیل" value={customer.email} />
+              <InfoRow icon={FolderKanban} label="نام پروژه" value={customer.project_name} />
+              <InfoRow icon={MapPin} label="موقعیت پروژه" value={customer.project_location} />
+              <InfoRow
+                icon={CalendarClock}
+                label="تاریخ ثبت"
+                value={
+                  customer.created_at
+                    ? new Date(customer.created_at).toLocaleDateString("fa-IR")
+                    : ""
+                }
+              />
+              {customer.notes && (
+                <InfoRow icon={StickyNote} label="یادداشت" value={customer.notes} />
+              )}
+            </div>
           </div>
         </div>
+
+        {/* ستون اصلی — تاریخچه تماس‌ها (چت‌مانند) */}
+        <div className="w-full lg:flex-1">
+          <CallTimeline
+            customerId={id}
+            refreshKey={refreshKey}
+            onAddReport={(startTs) => openReport(startTs)}
+          />
+        </div>
       </div>
+
+      <CallReportPanel
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        onSaved={() => setRefreshKey((k) => k + 1)}
+        customerId={id}
+        customerName={fullName}
+        initialStart={reportInitialStart}
+      />
     </div>
   );
 }
@@ -165,15 +199,13 @@ function InfoRow({ icon: Icon, label, value }) {
       )}
       <div className={cn(Icon ? "" : "pr-11", "min-w-0 flex-1")}>
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-sm font-medium break-words mt-0.5">
-          {value ? value : "—"}
-        </p>
+        <p className="text-sm font-medium break-words mt-0.5">{value ? value : "—"}</p>
       </div>
     </div>
   );
 }
 
-function CallButton({ phone, customerName }) {
+function CallButton({ phone, customerName, onCallSuccess }) {
   const [status, setStatus] = useState("idle"); // idle | calling | success | error
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -181,8 +213,11 @@ function CallButton({ phone, customerName }) {
     if (!phone || status === "calling") return;
     setStatus("calling");
     setErrorMsg("");
+    const startTs = Math.floor(Date.now() / 1000);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       const res = await fetch("/api/call-customer", {
         method: "POST",
         headers: {
@@ -194,6 +229,7 @@ function CallButton({ phone, customerName }) {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "برقراری تماس ناموفق بود");
       setStatus("success");
+      onCallSuccess?.(startTs);
       setTimeout(() => setStatus("idle"), 2500);
     } catch (err) {
       setStatus("error");
