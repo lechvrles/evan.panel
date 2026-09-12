@@ -20,26 +20,51 @@ export default function CallReportPanel({
   customerId,
   customerName,
   initialStart,
+  initialAudioUrl,
 }) {
   const { employee } = useAuth();
   const [subject, setSubject] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [report, setReport] = useState("");
+  const [audioUrl, setAudioUrl] = useState("");
+  const [timeInput, setTimeInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (open) {
       setSubject("");
-      setStartTime(initialStart ? String(initialStart) : String(Math.floor(Date.now() / 1000)));
-      setEndTime("");
+      const startSec = initialStart ? Number(initialStart) : Math.floor(Date.now() / 1000);
+      setStartTime(String(startSec));
+
+      const d = new Date(startSec * 1000);
+      const hh = String(d.getHours()).padStart(2, "0");
+      const mm = String(d.getMinutes()).padStart(2, "0");
+      setTimeInput(`${hh}${mm}`);
+
+      setEndTime(String(Math.floor(Date.now() / 1000)));
       setReport("");
+      setAudioUrl(initialAudioUrl || "");
       setError("");
     }
-  }, [open, initialStart]);
+  }, [open, initialStart, initialAudioUrl]);
 
   if (!open) return null;
+
+  const handleTimeInput = (val) => {
+    const cleaned = val.replace(/\D/g, "").slice(0, 4);
+    setTimeInput(cleaned);
+    if (cleaned.length === 4) {
+      const h = parseInt(cleaned.slice(0, 2), 10);
+      const m = parseInt(cleaned.slice(2, 4), 10);
+      if (h >= 0 && h < 24 && m >= 0 && m < 60) {
+        const now = new Date();
+        now.setHours(h, m, 0, 0);
+        setStartTime(String(Math.floor(now.getTime() / 1000)));
+      }
+    }
+  };
 
   const duration =
     startTime && endTime ? Math.max(0, Number(endTime) - Number(startTime)) : null;
@@ -52,16 +77,19 @@ export default function CallReportPanel({
       const start = startTime ? Number(startTime) : null;
       const end = endTime ? Number(endTime) : Math.floor(Date.now() / 1000);
 
-      const { error: insertError } = await supabase.from("call_reports").insert([
-        {
-          customer_id: customerId,
-          employee_id: employee?.id || null,
-          subject: subject.trim(),
-          start_time: start,
-          end_time: end,
-          report: report.trim(),
-        },
-      ]);
+      const payload = {
+        customer_id: customerId,
+        employee_id: employee?.id || null,
+        subject: subject.trim(),
+        start_time: start,
+        end_time: end,
+        report: report.trim(),
+      };
+      if (audioUrl) {
+        payload.audio_url = audioUrl.trim();
+      }
+
+      const { error: insertError } = await supabase.from("call_reports").insert([payload]);
       if (insertError) throw insertError;
 
       const d = start && end ? Math.max(0, end - start) : null;
@@ -121,13 +149,15 @@ export default function CallReportPanel({
             <div className="space-y-1.5">
               <Label className="flex items-center gap-1.5 text-xs">
                 <Clock className="w-3.5 h-3.5" />
-                شروع مکالمه
+                زمان تماس (HHMM)
               </Label>
               <Input
-                type="number"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="h-11 text-center font-mono tracking-wide rounded-xl bg-accent/40 border-transparent focus-visible:border-ring"
+                type="text"
+                maxLength={4}
+                value={timeInput}
+                onChange={(e) => handleTimeInput(e.target.value)}
+                placeholder="مثال: 1430"
+                className="h-11 text-center font-mono tracking-widest rounded-xl bg-accent/40 border-transparent focus-visible:border-ring"
               />
             </div>
             <div className="space-y-1.5">
@@ -166,9 +196,19 @@ export default function CallReportPanel({
             <textarea
               value={report}
               onChange={(e) => setReport(e.target.value)}
-              rows={5}
+              rows={4}
               className="flex w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               placeholder="خلاصه‌ی مکالمه را بنویسید…"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>لینک فایل صوتی (اختیاری)</Label>
+            <Input
+              value={audioUrl}
+              onChange={(e) => setAudioUrl(e.target.value)}
+              placeholder="https://.../recording.mp3"
+              className="text-xs font-mono"
             />
           </div>
 

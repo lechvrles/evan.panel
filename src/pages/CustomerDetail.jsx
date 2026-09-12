@@ -31,6 +31,7 @@ export default function CustomerDetail() {
 
   const [reportOpen, setReportOpen] = useState(false);
   const [reportInitialStart, setReportInitialStart] = useState(null);
+  const [reportInitialAudio, setReportInitialAudio] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -83,8 +84,9 @@ export default function CustomerDetail() {
   const fullName = `${customer.first_name} ${customer.last_name}`;
   const editTo = `/customers/${id}/edit`;
 
-  const openReport = (startTs) => {
+  const openReport = (startTs, audioUrl = null) => {
     setReportInitialStart(startTs);
+    setReportInitialAudio(audioUrl);
     setReportOpen(true);
   };
 
@@ -130,7 +132,7 @@ export default function CustomerDetail() {
             <CallButton
               phone={customer.phone}
               customerName={fullName}
-              onCallSuccess={(startTs) => openReport(startTs)}
+              onCallSuccess={(startTs, audioUrl) => openReport(startTs, audioUrl)}
             />
           </div>
 
@@ -185,6 +187,7 @@ export default function CustomerDetail() {
         customerId={id}
         customerName={fullName}
         initialStart={reportInitialStart}
+        initialAudioUrl={reportInitialAudio}
       />
     </div>
   );
@@ -230,7 +233,7 @@ function CallButton({ phone, customerName, onCallSuccess }) {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "برقراری تماس ناموفق بود");
       setStatus("success");
-      onCallSuccess?.(startTs);
+      onCallSuccess?.(startTs, json.audio_url || json.data?.audio_url);
       setTimeout(() => setStatus("idle"), 2500);
     } catch (err) {
       setStatus("error");
