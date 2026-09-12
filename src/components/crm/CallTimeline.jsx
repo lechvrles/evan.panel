@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { Loader2, MessageSquare, PhoneCall, Plus } from "lucide-react";
+import { Loader2, MessageSquare, ClipboardEdit } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 function formatDuration(start, end) {
   if (!start || !end) return null;
@@ -17,7 +18,7 @@ function formatDate(iso) {
   }).format(new Date(iso));
 }
 
-export default function CallTimeline({ customerId, refreshKey, onAddReport }) {
+export default function CallTimeline({ customerId, customerName, refreshKey, onAddReport }) {
   const [reports, setReports] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -39,19 +40,25 @@ export default function CallTimeline({ customerId, refreshKey, onAddReport }) {
     };
   }, [customerId, refreshKey]);
 
+  const isEmpty = !loading && reports?.length === 0;
+
   return (
-    <div className="rounded-[28px] bg-card border border-border shadow-sm flex flex-col h-full min-h-[560px]">
+    <div className="rounded-[28px] bg-card border border-border shadow-sm flex flex-col h-full">
       <div className="px-6 py-4 border-b border-border">
-        <h2 className="font-heading text-base font-semibold">تاریخچه تماس‌ها</h2>
+        <h2 className="font-heading text-base font-semibold">{customerName}</h2>
+        <p className="text-xs text-muted-foreground mt-0.5">تاریخچه تماس‌ها</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+      <div
+        className={cn(
+          "flex-1 overflow-y-auto px-6 py-5 flex flex-col",
+          isEmpty ? "items-center justify-center" : "space-y-4"
+        )}
+      >
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-muted-foreground">
-            <Loader2 className="w-5 h-5 animate-spin" />
-          </div>
-        ) : reports.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+        ) : isEmpty ? (
+          <div className="flex flex-col items-center text-muted-foreground">
             <MessageSquare className="w-8 h-8 mb-2 opacity-60" />
             <p className="text-sm">هنوز گزارشی ثبت نشده.</p>
           </div>
@@ -81,18 +88,15 @@ export default function CallTimeline({ customerId, refreshKey, onAddReport }) {
         )}
       </div>
 
-      <div className="px-6 py-4 border-t border-border flex items-center justify-start">
+      <div className="px-6 py-3 flex items-center justify-end">
         <button
           type="button"
           onClick={() => onAddReport(Math.floor(Date.now() / 1000))}
-          className="w-11 h-11 rounded-full bg-primary text-primary-foreground grid place-items-center hover:opacity-90 active:scale-95 transition-all relative"
+          className="w-9 h-9 rounded-full bg-primary text-primary-foreground grid place-items-center hover:opacity-90 active:scale-95 transition-all"
           aria-label="ثبت گزارش تماس"
           title="ثبت گزارش تماس"
         >
-          <PhoneCall className="w-5 h-5" />
-          <span className="absolute -top-0.5 -left-0.5 w-4 h-4 rounded-full bg-emerald-500 text-white grid place-items-center">
-            <Plus className="w-3 h-3" strokeWidth={3} />
-          </span>
+          <ClipboardEdit className="w-4 h-4" />
         </button>
       </div>
     </div>

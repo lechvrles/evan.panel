@@ -98,7 +98,7 @@ export default function CustomerDetail() {
         بازگشت به لیست
       </button>
 
-      <div className="flex flex-col lg:flex-row gap-6 items-start">
+      <div className="flex flex-col lg:flex-row gap-6">
         {/* ستون راست — قالب مربعی + قالب مستطیلی */}
         <div className="w-full lg:w-72 shrink-0 space-y-6">
           {/* قالب مربعی — عکس، نام، دکمه تماس */}
@@ -171,6 +171,7 @@ export default function CustomerDetail() {
         <div className="w-full lg:flex-1">
           <CallTimeline
             customerId={id}
+            customerName={fullName}
             refreshKey={refreshKey}
             onAddReport={(startTs) => openReport(startTs)}
           />

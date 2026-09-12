@@ -4,7 +4,14 @@ import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { X, Loader2, PhoneCall } from "lucide-react";
+import { X, Loader2, ClipboardEdit, Clock, Timer } from "lucide-react";
+
+function formatDuration(sec) {
+  if (sec == null) return null;
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
 
 export default function CallReportPanel({
   open,
@@ -34,6 +41,9 @@ export default function CallReportPanel({
 
   if (!open) return null;
 
+  const duration =
+    startTime && endTime ? Math.max(0, Number(endTime) - Number(startTime)) : null;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -54,13 +64,11 @@ export default function CallReportPanel({
       ]);
       if (insertError) throw insertError;
 
-      const duration = start && end ? Math.max(0, end - start) : null;
+      const d = start && end ? Math.max(0, end - start) : null;
       const parts = [
         `📝 گزارش تماس با ${customerName}`,
         subject.trim() ? `موضوع: ${subject.trim()}` : null,
-        duration != null
-          ? `مدت: ${Math.floor(duration / 60)}:${String(duration % 60).padStart(2, "0")}`
-          : null,
+        d != null ? `مدت: ${formatDuration(d)}` : null,
         report.trim() ? `یادداشت: ${report.trim()}` : null,
       ].filter(Boolean);
 
@@ -78,12 +86,12 @@ export default function CallReportPanel({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative ml-auto h-full w-full sm:w-1/2 bg-card border-l border-border shadow-2xl flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+      <div className="relative w-full max-w-md max-h-[85vh] overflow-y-auto bg-card rounded-[28px] border border-border shadow-2xl flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
           <div className="flex items-center gap-2">
-            <PhoneCall className="w-4 h-4 text-primary" />
+            <ClipboardEdit className="w-4 h-4 text-primary" />
             <h2 className="font-heading text-base font-semibold">گزارش تماس</h2>
           </div>
           <button
@@ -95,7 +103,7 @@ export default function CallReportPanel({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
           <p className="text-sm text-muted-foreground">
             تماس با <span className="font-medium text-foreground">{customerName}</span>
           </p>
@@ -109,40 +117,64 @@ export default function CallReportPanel({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>شروع مکالمه</Label>
+              <Label className="flex items-center gap-1.5 text-xs">
+                <Clock className="w-3.5 h-3.5" />
+                شروع مکالمه
+              </Label>
               <Input
                 type="number"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
+                className="h-11 text-center font-mono tracking-wide rounded-xl bg-accent/40 border-transparent focus-visible:border-ring"
               />
             </div>
             <div className="space-y-1.5">
-              <Label>پایان مکالمه</Label>
-              <Input
-                type="number"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                placeholder="خالی = الان"
-              />
+              <Label className="flex items-center gap-1.5 text-xs">
+                <Clock className="w-3.5 h-3.5" />
+                پایان مکالمه
+              </Label>
+              <div className="flex gap-1.5">
+                <Input
+                  type="number"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  placeholder="—"
+                  className="h-11 text-center font-mono tracking-wide rounded-xl bg-accent/40 border-transparent focus-visible:border-ring flex-1"
+                />
+                <button
+                  type="button"
+                  onClick={() => setEndTime(String(Math.floor(Date.now() / 1000)))}
+                  className="h-11 px-3 rounded-xl bg-accent text-xs font-medium hover:bg-accent/70 transition-colors shrink-0"
+                >
+                  الان
+                </button>
+              </div>
             </div>
           </div>
+
+          {duration != null && (
+            <div className="flex items-center justify-center gap-2 py-2 rounded-xl bg-accent/50 text-sm font-mono">
+              <Timer className="w-4 h-4 text-muted-foreground" />
+              مدت مکالمه: {formatDuration(duration)}
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label>گزارش</Label>
             <textarea
               value={report}
               onChange={(e) => setReport(e.target.value)}
-              rows={8}
-              className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              rows={5}
+              className="flex w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               placeholder="خلاصه‌ی مکالمه را بنویسید…"
             />
           </div>
 
           {error && <p className="text-xs text-destructive">{error}</p>}
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="destructive" onClick={onClose}>
               انصراف
             </Button>
