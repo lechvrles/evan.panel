@@ -112,7 +112,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
                     href={recordingUrls[r.id]}
                     download
                     className="text-xs text-primary hover:underline shrink-0"
-                  >
+                  <a>
                     دانلود
                   </a>
                 </div>
