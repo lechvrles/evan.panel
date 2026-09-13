@@ -101,9 +101,21 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
 
               {/* گزارش متنی */}
               {r.report && (
-                <p className="text-sm text-foreground/90 mt-1 whitespace-pre-wrap leading-relaxed">
+                <p className="text-sm text-foreground/90 mt-1 whitespace-pre-wrap">
                   {r.report}
                 </p>
+              )}
+              {r.recording_path && recordingUrls[r.id] && (
+                <div className="mt-2 flex items-center gap-2">
+                  <audio controls src={recordingUrls[r.id]} className="h-9 flex-1" />
+
+                    href={recordingUrls[r.id]}
+                    download
+                    className="text-xs text-primary hover:underline shrink-0"
+                  >
+                    دانلود
+                  </a>
+                </div>
               )}
 
               {/* مدت مکالمه */}
@@ -140,7 +152,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
       <div className="px-6 py-3 flex items-center justify-end">
         <button
           type="button"
-          onClick={() => onAddReport(Math.floor(Date.now() / 1000))}
+          onClick={() => onAddReport(new Date().toISOString())}}
           className="w-9 h-9 rounded-full bg-primary text-primary-foreground grid place-items-center hover:opacity-90 active:scale-95 transition-all shadow-sm"
           aria-label="ثبت گزارش تماس"
           title="ثبت گزارش تماس"

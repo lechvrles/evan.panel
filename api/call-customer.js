@@ -84,7 +84,11 @@ export default async function handler(req, res) {
       },
     ]);
 
-    return res.status(200).json({ ok: true, request_id: providerJson.data?.request_id });
+    return res.status(200).json({
+      ok: true,
+      request_id: providerJson.data?.request_id,
+      created_at: providerJson.data?.created_at,
+    });
   } catch (err) {
     return res.status(err.status || 500).json({ error: err.message || "خطای سرور" });
   }

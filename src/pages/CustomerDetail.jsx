@@ -30,7 +30,7 @@ export default function CustomerDetail() {
   const [notFound, setNotFound] = useState(false);
 
   const [reportOpen, setReportOpen] = useState(false);
-  const [reportInitialStart, setReportInitialStart] = useState(null);
+  const [reportAutoStartIso, setReportAutoStartIso] = useState(null);
   const [reportInitialAudio, setReportInitialAudio] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -84,9 +84,8 @@ export default function CustomerDetail() {
   const fullName = `${customer.first_name} ${customer.last_name}`;
   const editTo = `/customers/${id}/edit`;
 
-  const openReport = (startTs, audioUrl = null) => {
-    setReportInitialStart(startTs);
-    setReportInitialAudio(audioUrl);
+  const openReport = (isoOrNull) => {
+    setReportAutoStartIso(isoOrNull);
     setReportOpen(true);
   };
 
@@ -132,7 +131,7 @@ export default function CustomerDetail() {
             <CallButton
               phone={customer.phone}
               customerName={fullName}
-              onCallSuccess={(startTs, audioUrl) => openReport(startTs, audioUrl)}
+              onCallSuccess={(isoStart) => openReport(isoStart)}
             />
           </div>
 
@@ -186,8 +185,7 @@ export default function CustomerDetail() {
         onSaved={() => setRefreshKey((k) => k + 1)}
         customerId={id}
         customerName={fullName}
-        initialStart={reportInitialStart}
-        initialAudioUrl={reportInitialAudio}
+        autoStartIso={reportAutoStartIso}
       />
     </div>
   );
@@ -217,7 +215,6 @@ function CallButton({ phone, customerName, onCallSuccess }) {
     if (!phone || status === "calling") return;
     setStatus("calling");
     setErrorMsg("");
-    const startTs = Math.floor(Date.now() / 1000);
     try {
       const {
         data: { session },
@@ -233,12 +230,8 @@ function CallButton({ phone, customerName, onCallSuccess }) {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "برقراری تماس ناموفق بود");
       setStatus("success");
-      onCallSuccess?.(startTs, json.audio_url || json.data?.audio_url);
+      onCallSuccess?.(json.created_at || new Date().toISOString());
       setTimeout(() => setStatus("idle"), 2500);
-    } catch (err) {
-      setStatus("error");
-      setErrorMsg(err.message || "خطا در برقراری تماس");
-      setTimeout(() => setStatus("idle"), 3000);
     }
   };
 
