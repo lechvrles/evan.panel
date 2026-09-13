@@ -232,6 +232,10 @@ function CallButton({ phone, customerName, onCallSuccess }) {
       setStatus("success");
       onCallSuccess?.(json.created_at || new Date().toISOString());
       setTimeout(() => setStatus("idle"), 2500);
+    } catch (err) {
+      setStatus("error");
+      setErrorMsg(err.message || "خطا در برقراری تماس");
+      setTimeout(() => setStatus("idle"), 3000);
     }
   };
 
