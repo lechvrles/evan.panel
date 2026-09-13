@@ -152,7 +152,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
       <div className="px-6 py-3 flex items-center justify-end">
         <button
           type="button"
-          onClick={() => onAddReport(new Date().toISOString())}}
+          onClick={() => onAddReport(new Date().toISOString())}
           className="w-9 h-9 rounded-full bg-primary text-primary-foreground grid place-items-center hover:opacity-90 active:scale-95 transition-all shadow-sm"
           aria-label="ثبت گزارش تماس"
           title="ثبت گزارش تماس"
