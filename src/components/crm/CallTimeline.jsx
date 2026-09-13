@@ -21,6 +21,7 @@ function formatDate(iso) {
 export default function CallTimeline({ customerId, customerName, refreshKey, onAddReport }) {
   const [reports, setReports] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [recordingUrls, setRecordingUrls] = useState({});
 
   useEffect(() => {
     let active = true;
@@ -39,6 +40,23 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
       active = false;
     };
   }, [customerId, refreshKey]);
+
+  useEffect(() => {
+    if (!reports?.length) return;
+    const withRecording = reports.filter((r) => r.recording_path);
+    if (!withRecording.length) return;
+    (async () => {
+      const entries = await Promise.all(
+        withRecording.map(async (r) => {
+          const { data } = await supabase.storage
+            .from("call-recordings")
+            .createSignedUrl(r.recording_path, 3600);
+          return [r.id, data?.signedUrl || null];
+        })
+      );
+      setRecordingUrls(Object.fromEntries(entries));
+    })();
+  }, [reports]);
 
   const isEmpty = !loading && reports?.length === 0;
 
