@@ -127,6 +127,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
                       className="inline-flex items-center gap-1 text-xs text-emerald-800 hover:text-emerald-950 font-medium transition-colors bg-emerald-100/70 px-2.5 py-1 rounded-md"
                     >
                       <Download className="w-3.5 h-3.5" />
+                    <
                       دانلود صوت تماس
                     </a>
                   </div>
