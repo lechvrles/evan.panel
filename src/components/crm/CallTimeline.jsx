@@ -86,7 +86,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
               key={r.id}
               className="max-w-[85%] mr-auto rounded-2xl rounded-tr-sm bg-emerald-50/90 border border-emerald-200/70 px-4 py-3.5 shadow-sm"
             >
-              {/* تایتل شامل تاریخ و زمان تماس */}
+              {/* تایتل شامل تاریخ و موضوع تماس */}
               <div className="flex items-center justify-between text-xs font-semibold text-emerald-900 mb-1.5 border-b border-emerald-200/50 pb-1.5">
                 <span className="flex items-center gap-1.5">
                   <PhoneCall className="w-3.5 h-3.5 text-emerald-700" />
@@ -105,36 +105,24 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
                   {r.report}
                 </p>
               )}
-              {r.recording_path && recordingUrls[r.id] && (
-                <div className="mt-2 flex items-center gap-2">
-                  <audio controls src={recordingUrls[r.id]} className="h-9 flex-1" />
 
-                    href={recordingUrls[r.id]}
-                    download
-                    className="text-xs text-primary hover:underline shrink-0"
-                  <a>
-                    دانلود
-                  </a>
+              {/* مدت مکالمه */}
+              {formatDuration(r.start_time, r.end_time) && (
+                <div className="flex items-center gap-2 mt-2 text-xs text-emerald-800/80">
+                  <span>مدت: {formatDuration(r.start_time, r.end_time)}</span>
                 </div>
               )}
 
-              {/* مدت مکالمه */}
-              <div className="flex items-center gap-2 mt-2 text-xs text-emerald-800/80">
-                {formatDuration(r.start_time, r.end_time) && (
-                  <span>مدت: {formatDuration(r.start_time, r.end_time)}</span>
-                )}
-              </div>
-
               {/* پخش و دانلود صوت تماس */}
-              {r.audio_url && (
+              {r.recording_path && recordingUrls[r.id] && (
                 <div className="mt-3 pt-2.5 border-t border-emerald-200/60 flex flex-col gap-2">
                   <audio controls className="w-full h-9 rounded-lg">
-                    <source src={r.audio_url} type="audio/mpeg" />
+                    <source src={recordingUrls[r.id]} type="audio/mpeg" />
                     مرورگر شما از پخش صوت پشتیبانی نمی‌کند.
                   </audio>
                   <div className="flex justify-end">
-                    <a
-                      href={r.audio_url}
+
+                      href={recordingUrls[r.id]}
                       download="call-recording.mp3"
                       className="inline-flex items-center gap-1 text-xs text-emerald-800 hover:text-emerald-950 font-medium transition-colors bg-emerald-100/70 px-2.5 py-1 rounded-md"
                     >
