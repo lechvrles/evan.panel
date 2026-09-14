@@ -64,7 +64,6 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
     <div className="rounded-[28px] bg-card border border-border shadow-sm flex flex-col h-full">
       <div className="px-6 py-4 border-b border-border">
         <h2 className="font-heading text-base font-semibold">{customerName}</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">تاریخچه تماس‌ها</p>
       </div>
 
       <div
@@ -121,12 +120,12 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
                     مرورگر شما از پخش صوت پشتیبانی نمی‌کند.
                   </audio>
                   <div className="flex justify-end">
-
+                    <a
                       href={recordingUrls[r.id]}
                       download="call-recording.mp3"
                       className="inline-flex items-center gap-1 text-xs text-emerald-800 hover:text-emerald-950 font-medium transition-colors bg-emerald-100/70 px-2.5 py-1 rounded-md"
+                    >
                       <Download className="w-3.5 h-3.5" />
-                    <a>
                       دانلود صوت تماس
                     </a>
                   </div>
