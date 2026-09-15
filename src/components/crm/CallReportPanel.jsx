@@ -79,21 +79,20 @@ export default function CallReportPanel({
     setSaving(true);
     try {
       const end = endUnix ?? Math.floor(Date.now() / 1000);
-      let recordingPath = null;
-      for (let attempt = 0; attempt < 3; attempt++) {
-        const { data: recentCall } = await supabase
-          .from("call_logs")
-          .select("recording_path")
-          .eq("matched_customer_id", customerId)
-          .not("recording_path", "is", null)
-          .order("received_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (recentCall?.recording_path) {
-          recordingPath = recentCall.recording_path;
-          break;
-        }
-        if (attempt < 2) await new Promise((r) => setTimeout(r, 1500));
+
+      // گرفتن file_id و call_id از آخرین call_log همان مشتری
+      let fileId = null, callId = null;
+      const { data: recentLog } = await supabase
+        .from("call_logs")
+        .select("file_id, call_id")
+        .eq("matched_customer_id", customerId)
+        .not("file_id", "is", null)
+        .order("received_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (recentLog) {
+        fileId = recentLog.file_id;
+        callId = recentLog.call_id;
       }
 
       const { error: insertError } = await supabase.from("call_reports").insert([
@@ -104,7 +103,8 @@ export default function CallReportPanel({
           start_time: startUnix,
           end_time: end,
           report: report.trim(),
-          recording_path: recordingPath,
+          file_id: fileId,
+          call_id: callId,
         },
       ]);
       if (insertError) throw insertError;

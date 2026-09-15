@@ -21,7 +21,6 @@ function formatDate(iso) {
 export default function CallTimeline({ customerId, customerName, refreshKey, onAddReport }) {
   const [reports, setReports] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [recordingUrls, setRecordingUrls] = useState({});
 
   useEffect(() => {
     let active = true;
@@ -36,29 +35,15 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
       setReports(error ? [] : data || []);
       setLoading(false);
     })();
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [customerId, refreshKey]);
 
-  useEffect(() => {
-    if (!reports?.length) return;
-    const withRecording = reports.filter((r) => r.recording_path);
-    if (!withRecording.length) return;
-    (async () => {
-      const entries = await Promise.all(
-        withRecording.map(async (r) => {
-          const { data } = await supabase.storage
-            .from("call-recordings")
-            .createSignedUrl(r.recording_path, 3600);
-          return [r.id, data?.signedUrl || null];
-        })
-      );
-      setRecordingUrls(Object.fromEntries(entries));
-    })();
-  }, [reports]);
-
   const isEmpty = !loading && reports?.length === 0;
+
+  const recUrl = (r) =>
+    r.file_id && r.call_id
+      ? `/api/call-recording?file_id=${encodeURIComponent(r.file_id)}&call_id=${encodeURIComponent(r.call_id)}`
+      : null;
 
   return (
     <div className="rounded-[28px] bg-card border border-border shadow-sm flex flex-col h-full">
@@ -80,59 +65,58 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
             <p className="text-sm">هنوز گزارشی ثبت نشده.</p>
           </div>
         ) : (
-          reports.map((r) => (
-            <div
-              key={r.id}
-              className="max-w-[85%] mr-auto rounded-2xl rounded-tr-sm bg-emerald-50/90 border border-emerald-200/70 px-4 py-3.5 shadow-sm"
-            >
-              {/* تایتل شامل تاریخ و موضوع تماس */}
-              <div className="flex items-center justify-between text-xs font-semibold text-emerald-900 mb-1.5 border-b border-emerald-200/50 pb-1.5">
-                <span className="flex items-center gap-1.5">
-                  <PhoneCall className="w-3.5 h-3.5 text-emerald-700" />
-                  {formatDate(r.created_at)}
-                </span>
-                {r.subject && (
-                  <span className="bg-emerald-200/60 px-2 py-0.5 rounded text-emerald-900 font-medium">
-                    {r.subject}
+          reports.map((r) => {
+            const url = recUrl(r);
+            return (
+              <div
+                key={r.id}
+                className="max-w-[85%] mr-auto rounded-2xl rounded-tr-sm bg-emerald-50/90 border border-emerald-200/70 px-4 py-3.5 shadow-sm"
+              >
+                <div className="flex items-center justify-between text-xs font-semibold text-emerald-900 mb-1.5 border-b border-emerald-200/50 pb-1.5">
+                  <span className="flex items-center gap-1.5">
+                    <PhoneCall className="w-3.5 h-3.5 text-emerald-700" />
+                    {formatDate(r.created_at)}
                   </span>
+                  {r.subject && (
+                    <span className="bg-emerald-200/60 px-2 py-0.5 rounded text-emerald-900 font-medium">
+                      {r.subject}
+                    </span>
+                  )}
+                </div>
+
+                {r.report && (
+                  <p className="text-sm text-foreground/90 mt-1 whitespace-pre-wrap">
+                    {r.report}
+                  </p>
+                )}
+
+                {formatDuration(r.start_time, r.end_time) && (
+                  <div className="flex items-center gap-2 mt-2 text-xs text-emerald-800/80">
+                    <span>مدت: {formatDuration(r.start_time, r.end_time)}</span>
+                  </div>
+                )}
+
+                {url && (
+                  <div className="mt-3 pt-2.5 border-t border-emerald-200/60 flex flex-col gap-2">
+                    <audio controls className="w-full h-9 rounded-lg">
+                      <source src={url} type="audio/mpeg" />
+                      مرورگر شما از پخش صوت پشتیبانی نمی‌کند.
+                    </audio>
+                    <div className="flex justify-end">
+                      <a
+                        href={url}
+                        download={`call-${r.call_id}.mp3`}
+                        className="inline-flex items-center gap-1 text-xs text-emerald-800 hover:text-emerald-950 font-medium transition-colors bg-emerald-100/70 px-2.5 py-1 rounded-md"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        دانلود صوت تماس
+                      </a>
+                    </div>
+                  </div>
                 )}
               </div>
-
-              {/* گزارش متنی */}
-              {r.report && (
-                <p className="text-sm text-foreground/90 mt-1 whitespace-pre-wrap">
-                  {r.report}
-                </p>
-              )}
-
-              {/* مدت مکالمه */}
-              {formatDuration(r.start_time, r.end_time) && (
-                <div className="flex items-center gap-2 mt-2 text-xs text-emerald-800/80">
-                  <span>مدت: {formatDuration(r.start_time, r.end_time)}</span>
-                </div>
-              )}
-
-              {/* پخش و دانلود صوت تماس */}
-              {r.recording_path && recordingUrls[r.id] && (
-                <div className="mt-3 pt-2.5 border-t border-emerald-200/60 flex flex-col gap-2">
-                  <audio controls className="w-full h-9 rounded-lg">
-                    <source src={recordingUrls[r.id]} type="audio/mpeg" />
-                    مرورگر شما از پخش صوت پشتیبانی نمی‌کند.
-                  </audio>
-                  <div className="flex justify-end">
-                    <a
-                      href={recordingUrls[r.id]}
-                      download="call-recording.mp3"
-                      className="inline-flex items-center gap-1 text-xs text-emerald-800 hover:text-emerald-950 font-medium transition-colors bg-emerald-100/70 px-2.5 py-1 rounded-md"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      دانلود صوت تماس
-                    </a>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
