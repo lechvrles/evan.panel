@@ -41,8 +41,8 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
   const isEmpty = !loading && reports?.length === 0;
 
   const recUrl = (r) =>
-    r.file_id && r.call_id
-      ? `/api/call-recording?file_id=${encodeURIComponent(r.file_id)}&call_id=${encodeURIComponent(r.call_id)}`
+    r.call_id
+      ? `/api/call-recording?cuid=${encodeURIComponent(r.call_id)}`
       : null;
 
   return (
