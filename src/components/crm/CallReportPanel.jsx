@@ -86,7 +86,7 @@ export default function CallReportPanel({
         .from("call_logs")
         .select("file_id, call_id")
         .eq("matched_customer_id", customerId)
-        .not("file_id", "is", null)
+        .not("call_id", "is", null)
         .order("received_at", { ascending: false })
         .limit(1)
         .maybeSingle();

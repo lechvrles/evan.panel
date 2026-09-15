@@ -40,10 +40,41 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
 
   const isEmpty = !loading && reports?.length === 0;
 
-  const recUrl = (r) =>
-    r.call_id
-      ? `/api/call-recording?cuid=${encodeURIComponent(r.call_id)}`
-      : null;
+  const [audioUrls, setAudioUrls] = useState({});
+
+  useEffect(() => {
+    if (!reports?.length) return;
+    const withCall = reports.filter((r) => r.call_id);
+    if (!withCall.length) return;
+
+    let objectUrls = [];
+    (async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const entries = await Promise.all(
+        withCall.map(async (r) => {
+          try {
+            const res = await fetch(
+              `/api/call-recording?cuid=${encodeURIComponent(r.call_id)}`,
+              { headers: { Authorization: `Bearer ${session?.access_token}` } }
+            );
+            if (!res.ok) return [r.id, null];
+            const blob = await res.blob();
+            const objUrl = URL.createObjectURL(blob);
+            objectUrls.push(objUrl);
+            return [r.id, objUrl];
+          } catch {
+            return [r.id, null];
+          }
+        })
+      );
+      setAudioUrls(Object.fromEntries(entries));
+    })();
+
+    return () => objectUrls.forEach((u) => URL.revokeObjectURL(u));
+  }, [reports]);
 
   return (
     <div className="rounded-[28px] bg-card border border-border shadow-sm flex flex-col h-full">
