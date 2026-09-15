@@ -5,7 +5,6 @@ function last10(phone) {
   return digits.slice(-10);
 }
 
-// سازگار با هر دو فرمت: رشته‌ی تخت یا آبجکت
 function num(v) {
   if (v == null) return null;
   if (typeof v === "object") return v.number || v.num || null;
@@ -61,7 +60,6 @@ export default async function handler(req, res) {
       const path = await downloadAndStore(admin, body.download_url, `${callId}-${Date.now()}.mp3`);
       if (!path) return res.status(200).json({ ok: true, stored: false });
 
-      // پیدا کردن ردیف تماسِ همان call_id
       const { data: logRow } = await admin
         .from("call_logs")
         .select("id, matched_customer_id")
@@ -73,7 +71,6 @@ export default async function handler(req, res) {
       if (logRow) {
         await admin.from("call_logs").update({ recording_path: path }).eq("id", logRow.id);
 
-        // وصل‌کردن به آخرین گزارش بی‌صوت همان مشتری
         if (logRow.matched_customer_id) {
           const { data: pending } = await admin
             .from("call_reports")
@@ -95,7 +92,7 @@ export default async function handler(req, res) {
     }
 
     // ─── رویداد پایان تماس ───
-    const { call_id, type, call_source, call_dest } = body;
+    const { call_id, type, call_source, call_dest, file_id } = body;
     const customerPhone = type === "incoming" ? num(call_source) : num(call_dest);
 
     let matchedCustomerId = null;
@@ -109,16 +106,41 @@ export default async function handler(req, res) {
       matchedCustomerId = match?.id || null;
     }
 
+    // دانلود صوت بلافاصله بعد از پایان تماس
+    let recordingPath = null;
+    if (file_id && file_id !== "0" && call_id) {
+      const recUrl = `https://panel.telefonchy.com/my/calls/voice?file_id=${encodeURIComponent(
+        file_id
+      )}&cuid=${encodeURIComponent(call_id)}`;
+      recordingPath = await downloadAndStore(admin, recUrl, `${call_id}.mp3`);
+    }
+
     const { error: insertError } = await admin.from("call_logs").insert([
       {
         phone: customerPhone || null,
         matched_customer_id: matchedCustomerId,
         call_id: call_id || null,
-        recording_path: null,
+        recording_path: recordingPath,
         raw_payload: body,
       },
     ]);
     if (insertError) console.error("call_logs insert failed:", insertError.message);
+
+    // وصل‌کردن به آخرین گزارش بی‌صوت همان مشتری
+    if (recordingPath && matchedCustomerId) {
+      const { data: pending } = await admin
+        .from("call_reports")
+        .select("id")
+        .eq("customer_id", matchedCustomerId)
+        .is("recording_path", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (pending) {
+        await admin.from("call_reports").update({ recording_path: recordingPath }).eq("id", pending.id);
+        console.log("recording attached to report", pending.id);
+      }
+    }
 
     return res.status(200).json({ ok: true });
   } catch (err) {
