@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { Loader2, MessageSquare, ClipboardEdit, PhoneCall, Download } from "lucide-react";
+import { Loader2, MessageSquare, ClipboardEdit, PhoneCall } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function formatDuration(start, end) {
@@ -21,6 +21,8 @@ function formatDate(iso) {
 export default function CallTimeline({ customerId, customerName, refreshKey, onAddReport }) {
   const [reports, setReports] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [audioUrls, setAudioUrls] = useState({});
+  const [audioLoading, setAudioLoading] = useState({});
 
   useEffect(() => {
     let active = true;
@@ -35,15 +37,59 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
       setReports(error ? [] : data || []);
       setLoading(false);
     })();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [customerId, refreshKey]);
 
-  const isEmpty = !loading && reports?.length === 0;
+  // برای هر گزارشی که call_id داره، فایل صوتی رو با توکن کارمند می‌گیریم
+  // و به‌صورت Blob محلی نگه می‌داریم (چون تگ audio نمی‌تونه هدر بفرسته)
+  useEffect(() => {
+    if (!reports?.length) return;
+    const withCall = reports.filter((r) => r.call_id && !audioUrls[r.id]);
+    if (!withCall.length) return;
 
-const recUrl = (r) =>
-    r.call_id
-      ? `/api/call-recording?cuid=${encodeURIComponent(r.call_id)}`
-      : null;
+    let createdUrls = [];
+    let cancelled = false;
+
+    (async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      for (const r of withCall) {
+        setAudioLoading((prev) => ({ ...prev, [r.id]: true }));
+        try {
+          const res = await fetch(
+            `/api/call-recording?cuid=${encodeURIComponent(r.call_id)}`,
+            { headers: { Authorization: `Bearer ${session?.access_token}` } }
+          );
+          if (!res.ok || cancelled) {
+            setAudioLoading((prev) => ({ ...prev, [r.id]: false }));
+            continue;
+          }
+          const blob = await res.blob();
+          const objUrl = URL.createObjectURL(blob);
+          createdUrls.push(objUrl);
+          if (!cancelled) {
+            setAudioUrls((prev) => ({ ...prev, [r.id]: objUrl }));
+          }
+        } catch {
+          // بی‌صدا رد می‌شیم؛ اگه فایل نبود، پخش‌کننده اصلاً نشون داده نمی‌شه
+        } finally {
+          setAudioLoading((prev) => ({ ...prev, [r.id]: false }));
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      createdUrls.forEach((u) => URL.revokeObjectURL(u));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reports]);
+
+  const isEmpty = !loading && reports?.length === 0;
 
   return (
     <div className="rounded-[28px] bg-card border border-border shadow-sm flex flex-col h-full">
@@ -65,58 +111,52 @@ const recUrl = (r) =>
             <p className="text-sm">هنوز گزارشی ثبت نشده.</p>
           </div>
         ) : (
-          reports.map((r) => {
-            const url = recUrl(r);
-            return (
-              <div
-                key={r.id}
-                className="max-w-[85%] mr-auto rounded-2xl rounded-tr-sm bg-emerald-50/90 border border-emerald-200/70 px-4 py-3.5 shadow-sm"
-              >
-                <div className="flex items-center justify-between text-xs font-semibold text-emerald-900 mb-1.5 border-b border-emerald-200/50 pb-1.5">
-                  <span className="flex items-center gap-1.5">
-                    <PhoneCall className="w-3.5 h-3.5 text-emerald-700" />
-                    {formatDate(r.created_at)}
+          reports.map((r) => (
+            <div
+              key={r.id}
+              className="max-w-[85%] mr-auto rounded-2xl rounded-tr-sm bg-emerald-50/90 border border-emerald-200/70 px-4 py-3.5 shadow-sm"
+            >
+              <div className="flex items-center justify-between text-xs font-semibold text-emerald-900 mb-1.5 border-b border-emerald-200/50 pb-1.5">
+                <span className="flex items-center gap-1.5">
+                  <PhoneCall className="w-3.5 h-3.5 text-emerald-700" />
+                  {formatDate(r.created_at)}
+                </span>
+                {r.subject && (
+                  <span className="bg-emerald-200/60 px-2 py-0.5 rounded text-emerald-900 font-medium">
+                    {r.subject}
                   </span>
-                  {r.subject && (
-                    <span className="bg-emerald-200/60 px-2 py-0.5 rounded text-emerald-900 font-medium">
-                      {r.subject}
-                    </span>
-                  )}
-                </div>
-
-                {r.report && (
-                  <p className="text-sm text-foreground/90 mt-1 whitespace-pre-wrap">
-                    {r.report}
-                  </p>
-                )}
-
-                {formatDuration(r.start_time, r.end_time) && (
-                  <div className="flex items-center gap-2 mt-2 text-xs text-emerald-800/80">
-                    <span>مدت: {formatDuration(r.start_time, r.end_time)}</span>
-                  </div>
-                )}
-
-                {url && (
-                  <div className="mt-3 pt-2.5 border-t border-emerald-200/60 flex flex-col gap-2">
-                    <audio controls className="w-full h-9 rounded-lg">
-                      <source src={url} type="audio/mpeg" />
-                      مرورگر شما از پخش صوت پشتیبانی نمی‌کند.
-                    </audio>
-                    <div className="flex justify-end">
-                      <a
-                        href={url}
-                        download={`call-${r.call_id}.mp3`}
-                        className="inline-flex items-center gap-1 text-xs text-emerald-800 hover:text-emerald-950 font-medium transition-colors bg-emerald-100/70 px-2.5 py-1 rounded-md"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        دانلود صوت تماس
-                      </a>
-                    </div>
-                  </div>
                 )}
               </div>
-            );
-          })
+
+              {r.report && (
+                <p className="text-sm text-foreground/90 mt-1 whitespace-pre-wrap">
+                  {r.report}
+                </p>
+              )}
+
+              {formatDuration(r.start_time, r.end_time) && (
+                <div className="flex items-center gap-2 mt-2 text-xs text-emerald-800/80">
+                  <span>مدت: {formatDuration(r.start_time, r.end_time)}</span>
+                </div>
+              )}
+
+              {r.call_id && (
+                <div className="mt-3 pt-2.5 border-t border-emerald-200/60">
+                  {audioUrls[r.id] ? (
+                    <audio controls className="w-full h-9 rounded-lg">
+                      <source src={audioUrls[r.id]} type="audio/mpeg" />
+                      مرورگر شما از پخش صوت پشتیبانی نمی‌کند.
+                    </audio>
+                  ) : audioLoading[r.id] ? (
+                    <div className="flex items-center gap-2 text-xs text-emerald-800/70">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      در حال دریافت فایل صوتی…
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          ))
         )}
       </div>
 
