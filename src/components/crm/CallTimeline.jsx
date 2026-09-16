@@ -101,7 +101,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
           </div>
         ) : (
           reports.map((r) => {
-            const url = recUrl(r);
+            const url = audioUrls[r.id];
             return (
               <div
                 key={r.id}
