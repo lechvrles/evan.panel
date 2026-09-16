@@ -2,27 +2,53 @@ import { getAdminClient, requireEmployee } from "./_admin.js";
 
 const BASE = "https://panel.telefonchy.com/webservice/v1";
 
-// طبق مستندات، file_id فقط از API لیست تماس‌ها قابل دریافت است؛
-// CDR آن را نمی‌فرستد. با cuid داخل لیست دنبالش می‌گردیم.
 async function findFileId(token, cuid) {
   const res = await fetch(`${BASE}/calls`, {
     headers: { "webservice-token": token, Accept: "application/json" },
   });
+
+  const raw = await res.text();
+  console.log("calls list status:", res.status);
+  console.log("calls list raw (first 1500 chars):", raw.slice(0, 1500));
+
   if (!res.ok) {
-    throw new Error(`calls list failed: ${res.status} ${await res.text()}`);
+    throw new Error(`calls list failed: ${res.status}`);
   }
-  const json = await res.json();
+
+  let json;
+  try {
+    json = JSON.parse(raw);
+  } catch {
+    console.error("calls list: response was not valid JSON");
+    return null;
+  }
+
   const list = Array.isArray(json?.data)
     ? json.data
     : Array.isArray(json?.data?.items)
     ? json.data.items
+    : Array.isArray(json?.data?.calls)
+    ? json.data.calls
     : Array.isArray(json)
     ? json
     : [];
 
+  console.log("calls list count:", list.length);
+  if (list.length) {
+    console.log("calls list sample item keys:", Object.keys(list[0]));
+    console.log("calls list sample item:", JSON.stringify(list[0]));
+  }
+
   const match = list.find(
     (c) => String(c.cuid) === String(cuid) || String(c.call_id) === String(cuid)
   );
+
+  if (!match) {
+    console.log("no match found for cuid:", cuid, "among", list.length, "items");
+  } else {
+    console.log("matched item:", JSON.stringify(match));
+  }
+
   return match?.file_id || match?.file_record || null;
 }
 
