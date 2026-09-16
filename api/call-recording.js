@@ -22,6 +22,7 @@ export default async function handler(req, res) {
 
   const token = process.env.TELEFONCHY_TOKEN;
   if (!token) return res.status(500).json({ error: "TELEFONCHY_TOKEN missing" });
+  console.log("DEBUG: Token exists:", !!token);
 
   try {
     const url = `${BASE}/calls/record-quality/${quality}?cuid=${encodeURIComponent(
