@@ -28,7 +28,7 @@ export default async function handler(req, res) {
       cuid
     )}&record_id=${encodeURIComponent(recordId)}`;
 
-    console.log("fetching recording:", url);
+    console.log("DEBUG: Full URL being requested:", url);
     const providerRes = await fetch(url, { headers: { "webservice-token": token } });
 
     if (!providerRes.ok) {
