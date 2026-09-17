@@ -308,8 +308,8 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
                         />
                       </a>
                     ) : (
-
-                        href={fileUrls[item.id] || "#"}
+                    <a  
+                      href={fileUrls[item.id] || "#"}
                         target="_blank"
                         rel="noreferrer"
                         className="flex items-center gap-2 text-xs bg-card border border-border rounded-lg px-3 py-2 hover:bg-accent transition-colors"
