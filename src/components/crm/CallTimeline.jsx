@@ -1,7 +1,21 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { Loader2, MessageSquare, ClipboardEdit, PhoneCall, Download } from "lucide-react";
+import { useAuth } from "@/lib/AuthContext";
+import {
+  Loader2,
+  MessageSquare,
+  ClipboardEdit,
+  PhoneCall,
+  Paperclip,
+  Send,
+  FileText,
+  X,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const ACCEPTED_FILES =
+  "image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.txt,.csv";
+const MAX_FILE_MB = 15;
 
 function formatDuration(start, end) {
   if (!start || !end) return null;
@@ -19,66 +33,187 @@ function formatDate(iso) {
 }
 
 export default function CallTimeline({ customerId, customerName, refreshKey, onAddReport }) {
-  const [reports, setReports] = useState(null);
+  const { employee } = useAuth();
+  const [feed, setFeed] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [messagesRefresh, setMessagesRefresh] = useState(0);
 
+  const [audioUrls, setAudioUrls] = useState({});
+  const [audioLoading, setAudioLoading] = useState({});
+  const [fileUrls, setFileUrls] = useState({});
+
+  const [messageText, setMessageText] = useState("");
+  const [pendingFile, setPendingFile] = useState(null);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState("");
+  const fileInputRef = useRef(null);
+
+  // بارگذاری ترکیبی گزارش‌های تماس و پیام‌ها، مرتب‌شده بر اساس زمان
   useEffect(() => {
     let active = true;
     setLoading(true);
     (async () => {
-      const { data, error } = await supabase
-        .from("call_reports")
-        .select("*")
-        .eq("customer_id", customerId)
-        .order("created_at", { ascending: true });
+      const [{ data: reportsData, error: reportsError }, { data: messagesData, error: messagesError }] =
+        await Promise.all([
+          supabase
+            .from("call_reports")
+            .select("*")
+            .eq("customer_id", customerId)
+            .order("created_at", { ascending: true }),
+          supabase
+            .from("customer_messages")
+            .select("*, employees(full_name)")
+            .eq("customer_id", customerId)
+            .order("created_at", { ascending: true }),
+        ]);
       if (!active) return;
-      setReports(error ? [] : data || []);
+      const merged = [
+        ...(reportsError ? [] : (reportsData || []).map((r) => ({ ...r, _kind: "report" }))),
+        ...(messagesError ? [] : (messagesData || []).map((m) => ({ ...m, _kind: "message" }))),
+      ].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      setFeed(merged);
       setLoading(false);
     })();
-    return () => { active = false; };
-  }, [customerId, refreshKey]);
+    return () => {
+      active = false;
+    };
+  }, [customerId, refreshKey, messagesRefresh]);
 
-  const isEmpty = !loading && reports?.length === 0;
-
-  const [audioUrls, setAudioUrls] = useState({});
-
+  // پخش صوت تماس‌ها (همون منطق قبلی)
   useEffect(() => {
-    if (!reports?.length) return;
-    const withCall = reports.filter((r) => r.call_id && r.file_id && r.file_id !== "0" && !audioUrls[r.id]);
+    if (!feed?.length) return;
+    const withCall = feed.filter(
+      (r) => r._kind === "report" && r.call_id && r.file_id && r.file_id !== "0" && !audioUrls[r.id]
+    );
     if (!withCall.length) return;
 
-    let objectUrls = [];
+    let createdUrls = [];
+    let cancelled = false;
+
     (async () => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
-      const entries = await Promise.all(
-        withCall.map(async (r) => {
-          try {
-            const params = new URLSearchParams({
-              cuid: r.call_id,
-              record_id: r.file_id,
-              quality: "merged",
-            });
-            const res = await fetch(`/api/call-recording?${params.toString()}`, {
-              headers: { Authorization: `Bearer ${session?.access_token}` },
-            });
-            if (!res.ok) return [r.id, null];
-            const blob = await res.blob();
-            const objUrl = URL.createObjectURL(blob);
-            objectUrls.push(objUrl);
-            return [r.id, objUrl];
-          } catch {
-            return [r.id, null];
+      for (const r of withCall) {
+        setAudioLoading((prev) => ({ ...prev, [r.id]: true }));
+        try {
+          const params = new URLSearchParams({
+            cuid: r.call_id,
+            record_id: r.file_id,
+            quality: "merged",
+          });
+          const res = await fetch(`/api/call-recording?${params.toString()}`, {
+            headers: { Authorization: `Bearer ${session?.access_token}` },
+          });
+          if (!res.ok || cancelled) {
+            setAudioLoading((prev) => ({ ...prev, [r.id]: false }));
+            continue;
           }
-        })
-      );
-      setAudioUrls(Object.fromEntries(entries));
+          const blob = await res.blob();
+          const objUrl = URL.createObjectURL(blob);
+          createdUrls.push(objUrl);
+          if (!cancelled) setAudioUrls((prev) => ({ ...prev, [r.id]: objUrl }));
+        } catch {
+          /* بی‌صدا رد می‌شیم */
+        } finally {
+          setAudioLoading((prev) => ({ ...prev, [r.id]: false }));
+        }
+      }
     })();
 
-    return () => objectUrls.forEach((u) => URL.revokeObjectURL(u));
-  }, [reports]);
+    return () => {
+      cancelled = true;
+      createdUrls.forEach((u) => URL.revokeObjectURL(u));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feed]);
+
+  // لینک امن برای فایل‌های ضمیمه‌ی پیام‌ها
+  useEffect(() => {
+    if (!feed?.length) return;
+    const withFile = feed.filter(
+      (m) => m._kind === "message" && m.file_path && !fileUrls[m.id]
+    );
+    if (!withFile.length) return;
+
+    (async () => {
+      const entries = await Promise.all(
+        withFile.map(async (m) => {
+          const { data } = await supabase.storage
+            .from("customer-files")
+            .createSignedUrl(m.file_path, 3600);
+          return [m.id, data?.signedUrl || null];
+        })
+      );
+      setFileUrls((prev) => ({ ...prev, ...Object.fromEntries(entries) }));
+    })();
+  }, [feed]);
+
+  const isEmpty = !loading && feed?.length === 0;
+
+  const handlePickFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_FILE_MB * 1024 * 1024) {
+      setSendError(`حجم فایل نباید بیشتر از ${MAX_FILE_MB} مگابایت باشد`);
+      e.target.value = "";
+      return;
+    }
+    setSendError("");
+    setPendingFile(file);
+  };
+
+  const clearPendingFile = () => {
+    setPendingFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!messageText.trim() && !pendingFile) return;
+    setSending(true);
+    setSendError("");
+    try {
+      let file_path = null;
+      let file_name = null;
+      let file_type = null;
+
+      if (pendingFile) {
+        const ext = pendingFile.name.includes(".") ? pendingFile.name.split(".").pop() : "";
+        const path = `${customerId}/${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2)}${ext ? "." + ext : ""}`;
+        const { error: uploadError } = await supabase.storage
+          .from("customer-files")
+          .upload(path, pendingFile, { contentType: pendingFile.type });
+        if (uploadError) throw uploadError;
+        file_path = path;
+        file_name = pendingFile.name;
+        file_type = pendingFile.type;
+      }
+
+      const { error: insertError } = await supabase.from("customer_messages").insert([
+        {
+          customer_id: customerId,
+          employee_id: employee?.id || null,
+          message: messageText.trim(),
+          file_path,
+          file_name,
+          file_type,
+        },
+      ]);
+      if (insertError) throw insertError;
+
+      setMessageText("");
+      clearPendingFile();
+      setMessagesRefresh((k) => k + 1);
+    } catch (err) {
+      setSendError(err.message || "ارسال پیام ناموفق بود");
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <div className="rounded-[28px] bg-card border border-border shadow-sm flex flex-col h-full">
@@ -97,74 +232,163 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
         ) : isEmpty ? (
           <div className="flex flex-col items-center text-muted-foreground">
             <MessageSquare className="w-8 h-8 mb-2 opacity-60" />
-            <p className="text-sm">هنوز گزارشی ثبت نشده.</p>
+            <p className="text-sm">هنوز پیام یا گزارشی ثبت نشده.</p>
           </div>
         ) : (
-          reports.map((r) => {
-            const url = audioUrls[r.id];
-            return (
+          feed.map((item) =>
+            item._kind === "report" ? (
               <div
-                key={r.id}
+                key={`report-${item.id}`}
                 className="max-w-[85%] mr-auto rounded-2xl rounded-tr-sm bg-emerald-50/90 border border-emerald-200/70 px-4 py-3.5 shadow-sm"
               >
                 <div className="flex items-center justify-between text-xs font-semibold text-emerald-900 mb-1.5 border-b border-emerald-200/50 pb-1.5">
                   <span className="flex items-center gap-1.5">
                     <PhoneCall className="w-3.5 h-3.5 text-emerald-700" />
-                    {formatDate(r.created_at)}
+                    {formatDate(item.created_at)}
                   </span>
-                  {r.subject && (
+                  {item.subject && (
                     <span className="bg-emerald-200/60 px-2 py-0.5 rounded text-emerald-900 font-medium">
-                      {r.subject}
+                      {item.subject}
                     </span>
                   )}
                 </div>
 
-                {r.report && (
+                {item.report && (
                   <p className="text-sm text-foreground/90 mt-1 whitespace-pre-wrap">
-                    {r.report}
+                    {item.report}
                   </p>
                 )}
 
-                {formatDuration(r.start_time, r.end_time) && (
+                {formatDuration(item.start_time, item.end_time) && (
                   <div className="flex items-center gap-2 mt-2 text-xs text-emerald-800/80">
-                    <span>مدت: {formatDuration(r.start_time, r.end_time)}</span>
+                    <span>مدت: {formatDuration(item.start_time, item.end_time)}</span>
                   </div>
                 )}
 
-                {r.call_id && audioUrls[r.id] && r.file_id && r.file_id !== "0" && (
+                {item.call_id && item.file_id && item.file_id !== "0" && (
                   <div className="mt-3 pt-2.5 border-t border-emerald-200/60">
-                    <audio controls className="w-full h-9 rounded-lg">
-                      <source src={audioUrls[r.id]} type="audio/mpeg" />
-                                    مرورگر شما از پخش صوت پشتیبانی نمی‌کند.
-                    </audio>
-                    <div className="flex justify-end">
-                      <a
-                        href={url}
-                        download={`call-${r.call_id}.mp3`}
-                        className="inline-flex items-center gap-1 text-xs text-emerald-800 hover:text-emerald-950 font-medium transition-colors bg-emerald-100/70 px-2.5 py-1 rounded-md"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        دانلود صوت تماس
-                      </a>
-                    </div>
+                    {audioUrls[item.id] ? (
+                      <audio controls className="w-full h-9 rounded-lg">
+                        <source src={audioUrls[item.id]} type="audio/mpeg" />
+                        مرورگر شما از پخش صوت پشتیبانی نمی‌کند.
+                      </audio>
+                    ) : audioLoading[item.id] ? (
+                      <div className="flex items-center gap-2 text-xs text-emerald-800/70">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        در حال دریافت فایل صوتی…
+                      </div>
+                    ) : null}
                   </div>
                 )}
               </div>
-            );
-          })
+            ) : (
+              <div
+                key={`msg-${item.id}`}
+                className="max-w-[85%] mr-auto rounded-2xl rounded-tr-sm bg-accent/70 border border-border px-4 py-3 shadow-sm"
+              >
+                <div className="flex items-center justify-between text-xs font-semibold text-foreground/80 mb-1">
+                  <span>{item.employees?.full_name || "کارمند"}</span>
+                  <span className="text-muted-foreground font-normal">
+                    {formatDate(item.created_at)}
+                  </span>
+                </div>
+
+                {item.message && (
+                  <p className="text-sm text-foreground/90 whitespace-pre-wrap">{item.message}</p>
+                )}
+
+                {item.file_path && (
+                  <div className="mt-2">
+                    {item.file_type?.startsWith("image/") && fileUrls[item.id] ? (
+                      <a href={fileUrls[item.id]} target="_blank" rel="noreferrer">
+                        <img
+                          src={fileUrls[item.id]}
+                          alt={item.file_name}
+                          className="max-h-48 rounded-lg border border-border"
+                        />
+                      </a>
+                    ) : (
+
+                        href={fileUrls[item.id] || "#"}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-2 text-xs bg-card border border-border rounded-lg px-3 py-2 hover:bg-accent transition-colors"
+                      >
+                        <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <span className="truncate">{item.file_name || "فایل ضمیمه"}</span>
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          )
         )}
       </div>
 
-      <div className="px-6 py-3 flex items-center justify-end">
-        <button
-          type="button"
-          onClick={() => onAddReport(new Date().toISOString())}
-          className="w-9 h-9 rounded-full bg-primary text-primary-foreground grid place-items-center hover:opacity-90 active:scale-95 transition-all shadow-sm"
-          aria-label="ثبت گزارش تماس"
-          title="ثبت گزارش تماس"
-        >
-          <ClipboardEdit className="w-4 h-4" />
-        </button>
+      {/* نوار ارسال پیام / فایل / گزارش تماس */}
+      <div className="border-t border-border px-4 py-3 space-y-2">
+        {pendingFile && (
+          <div className="flex items-center gap-2 text-xs bg-accent/60 rounded-lg px-3 py-1.5 w-fit">
+            <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="truncate max-w-[200px]">{pendingFile.name}</span>
+            <button
+              type="button"
+              onClick={clearPendingFile}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+        {sendError && <p className="text-xs text-destructive">{sendError}</p>}
+
+        <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept={ACCEPTED_FILES}
+            onChange={handlePickFile}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="w-9 h-9 rounded-full hover:bg-accent grid place-items-center text-muted-foreground transition-colors shrink-0"
+            aria-label="پیوست فایل"
+            title="پیوست فایل"
+          >
+            <Paperclip className="w-4 h-4" />
+          </button>
+
+          <input
+            type="text"
+            value={messageText}
+            onChange={(e) => setMessageText(e.target.value)}
+            placeholder="پیام بنویسید…"
+            className="flex-1 h-10 rounded-full bg-accent/40 border border-transparent focus:border-ring focus:outline-none px-4 text-sm"
+          />
+
+          <button
+            type="submit"
+            disabled={sending || (!messageText.trim() && !pendingFile)}
+            className="w-9 h-9 rounded-full bg-primary text-primary-foreground grid place-items-center hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 shrink-0"
+            aria-label="ارسال پیام"
+            title="ارسال پیام"
+          >
+            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onAddReport(new Date().toISOString())}
+            className="w-9 h-9 rounded-full bg-emerald-600 text-white grid place-items-center hover:opacity-90 active:scale-95 transition-all shrink-0"
+            aria-label="ثبت گزارش تماس"
+            title="ثبت گزارش تماس"
+          >
+            <ClipboardEdit className="w-4 h-4" />
+          </button>
+        </form>
       </div>
     </div>
   );
