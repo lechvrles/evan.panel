@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
 import {
@@ -27,7 +27,12 @@ function formatDuration(start, end) {
 
 function formatDate(iso) {
   return new Intl.DateTimeFormat("fa-IR", {
-    dateStyle: "short",
+    dateStyle: "long",
+  }).format(new Date(iso));
+}
+
+function formatTime(iso) {
+  return new Intl.DateTimeFormat("fa-IR", {
     timeStyle: "short",
   }).format(new Date(iso));
 }
@@ -47,6 +52,34 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState("");
   const fileInputRef = useRef(null);
+  const messagesRef = useRef(null);
+  const contentRef = useRef(null);
+  const followLatestRef = useRef(true);
+
+  useEffect(() => {
+    setFeed(null);
+    followLatestRef.current = true;
+  }, [customerId]);
+
+  // فقط ناحیهٔ پیام‌ها جابه‌جا شود، نه صفحهٔ اصلی.
+  useLayoutEffect(() => {
+    if (!loading && followLatestRef.current && messagesRef.current) {
+      messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
+    }
+  }, [feed, loading]);
+
+  // بارگذاری دیرهنگام عکس و صوت نباید آخرین پیام را از دید خارج کند.
+  useEffect(() => {
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      if (followLatestRef.current && messagesRef.current) {
+        messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
+      }
+    });
+    if (contentRef.current) observer.observe(contentRef.current);
+    if (messagesRef.current) observer.observe(messagesRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   // بارگذاری ترکیبی گزارش‌های تماس و پیام‌ها، مرتب‌شده بر اساس زمان
   useEffect(() => {
@@ -207,6 +240,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
 
       setMessageText("");
       clearPendingFile();
+      followLatestRef.current = true;
       setMessagesRefresh((k) => k + 1);
     } catch (err) {
       setSendError(err.message || "ارسال پیام ناموفق بود");
@@ -216,18 +250,31 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
   };
 
   return (
-    <div className="rounded-[28px] bg-card border border-border shadow-sm flex flex-col h-full">
-      <div className="px-6 py-4 border-b border-border">
+    <div className="rounded-[28px] bg-card border border-border shadow-sm flex flex-col h-[70dvh] lg:h-[calc(100dvh-12rem)] min-h-[20rem] min-w-0 overflow-hidden">
+      <div className="px-6 py-4 border-b border-border shrink-0">
         <h2 className="font-heading text-base font-semibold">{customerName}</h2>
       </div>
 
       <div
+        ref={messagesRef}
+        role="region"
+        aria-label="پیام‌ها و گزارش‌های مشتری"
+        aria-busy={loading}
+        tabIndex={0}
+        onScroll={() => {
+          const node = messagesRef.current;
+          followLatestRef.current = node.scrollHeight - node.scrollTop - node.clientHeight < 80;
+        }}
+        className="flex-1 min-h-0 overflow-y-auto overscroll-contain scrollbar-thin px-3 sm:px-6 py-5"
+      >
+        <div
+          ref={contentRef}
         className={cn(
-          "flex-1 overflow-y-auto px-6 py-5 flex flex-col",
+          "flex flex-col min-h-full",
           isEmpty ? "items-center justify-center" : "space-y-4"
         )}
       >
-        {loading ? (
+        {loading && !feed ? (
           <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
         ) : isEmpty ? (
           <div className="flex flex-col items-center text-muted-foreground">
@@ -235,8 +282,16 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
             <p className="text-sm">هنوز پیام یا گزارشی ثبت نشده.</p>
           </div>
         ) : (
-          feed.map((item) =>
-            item._kind === "report" ? (
+          feed?.map((item, index) => (
+            <React.Fragment key={`${item._kind}-${item.id}`}>
+              {(index === 0 || formatDate(item.created_at) !== formatDate(feed[index - 1].created_at)) && (
+                <div role="separator" className="flex items-center justify-center gap-3 shrink-0 py-2 text-xs text-muted-foreground">
+                  <span className="h-px flex-1 bg-border" />
+                  <span className="rounded-full bg-muted px-3 py-1">{formatDate(item.created_at)}</span>
+                  <span className="h-px flex-1 bg-border" />
+                </div>
+              )}
+            {item._kind === "report" ? (
               <div
                 key={`report-${item.id}`}
                 className="max-w-[85%] mr-auto rounded-2xl rounded-tr-sm bg-emerald-50/90 border border-emerald-200/70 px-4 py-3.5 shadow-sm"
@@ -244,7 +299,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
                 <div className="flex items-center justify-between text-xs font-semibold text-emerald-900 mb-1.5 border-b border-emerald-200/50 pb-1.5">
                   <span className="flex items-center gap-1.5">
                     <PhoneCall className="w-3.5 h-3.5 text-emerald-700" />
-                    {formatDate(item.created_at)}
+                    {formatTime(item.created_at)}
                   </span>
                   {item.subject && (
                     <span className="bg-emerald-200/60 px-2 py-0.5 rounded text-emerald-900 font-medium">
@@ -289,7 +344,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
                 <div className="flex items-center justify-between text-xs font-semibold text-foreground/80 mb-1">
                   <span>{item.employees?.full_name || "کارمند"}</span>
                   <span className="text-muted-foreground font-normal">
-                    {formatDate(item.created_at)}
+                    {formatTime(item.created_at)}
                   </span>
                 </div>
 
@@ -321,13 +376,15 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
                   </div>
                 )}
               </div>
-            )
-          )
+            )}
+            </React.Fragment>
+          ))
         )}
+        </div>
       </div>
 
       {/* نوار ارسال پیام / فایل / گزارش تماس */}
-      <div className="border-t border-border px-4 py-3 space-y-2">
+      <div className="border-t border-border px-3 sm:px-4 py-3 space-y-2 shrink-0">
         {pendingFile && (
           <div className="flex items-center gap-2 text-xs bg-accent/60 rounded-lg px-3 py-1.5 w-fit">
             <FileText className="w-3.5 h-3.5 text-muted-foreground" />
@@ -366,7 +423,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
             value={messageText}
             onChange={(e) => setMessageText(e.target.value)}
             placeholder="پیام بنویسید…"
-            className="flex-1 h-10 rounded-full bg-accent/40 border border-transparent focus:border-ring focus:outline-none px-4 text-sm"
+            className="flex-1 min-w-0 h-10 rounded-full bg-accent/40 border border-transparent focus:border-ring focus:outline-none px-4 text-sm"
           />
 
           <button

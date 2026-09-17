@@ -169,7 +169,7 @@ export default function CustomerDetail() {
         </div>
 
         {/* ستون اصلی — تاریخچه تماس‌ها (چت‌مانند) */}
-        <div className="w-full lg:flex-1">
+        <div className="w-full min-w-0 lg:flex-1">
           <CallTimeline
             customerId={id}
             customerName={fullName}
