@@ -261,10 +261,10 @@ export default function Employees() {
               <thead>
                 <tr className="bg-muted/40 text-xs text-muted-foreground">
                   <th className="px-5 py-3 text-right font-medium">کارمند</th>
-                  <th className="px-3 py-3 text-right font-medium">سمت شغلی</th>
-                  <th className="px-3 py-3 text-right font-medium">داخلی</th>
-                  <th className="px-3 py-3 text-right font-medium">نقش</th>
-                  <th className="px-3 py-3 text-right font-medium">وضعیت</th>
+                  <th className="px-3 py-3 text-center font-medium">سمت شغلی</th>
+                  <th className="px-3 py-3 text-center font-medium">داخلی</th>
+                  <th className="px-3 py-3 text-center font-medium">نقش</th>
+                  <th className="px-3 py-3 text-center font-medium">وضعیت</th>
                   <th className="px-5 py-3 text-left font-medium">
                     <span className="sr-only">عملیات</span>
                   </th>
@@ -293,9 +293,6 @@ export default function Employees() {
                               {isSelf && (
                                 <span className="text-xs text-muted-foreground"> (شما)</span>
                               )}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate" dir="ltr">
-                              @{emp.username}
                             </p>
                           </div>
                         </div>
