@@ -189,12 +189,13 @@ export default function Employees() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label>سمت شغلی (اختیاری)</Label>
+            <Label>سمت شغلی</Label>
             <Input
               list="position-suggestions"
               value={form.position}
               onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))}
               placeholder="مثلاً: توسعه‌دهنده، مدیر کل بازرگانی…"
+              required
             />
             <datalist id="position-suggestions">
               {POSITION_SUGGESTIONS.map((p) => (
@@ -261,8 +262,8 @@ export default function Employees() {
               <thead>
                 <tr className="bg-muted/40 text-xs text-muted-foreground">
                   <th className="px-5 py-3 text-right font-medium">کارمند</th>
-                  <th className="px-3 py-3 text-center font-medium">سمت شغلی</th>
-                  <th className="px-3 py-3 text-center font-medium">داخلی</th>
+                  <th className="px-3 py-3 text-right font-medium">سمت شغلی</th>
+                  <th className="px-3 py-3 text-right font-medium">داخلی</th>
                   <th className="px-3 py-3 text-center font-medium">نقش</th>
                   <th className="px-3 py-3 text-center font-medium">وضعیت</th>
                   <th className="px-5 py-3 text-left font-medium">
