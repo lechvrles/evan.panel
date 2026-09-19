@@ -48,6 +48,7 @@ export default function Employees() {
     password: "",
     full_name: "",
     position: "",
+    extension: "",
     role: "employee",
   });
   const [creating, setCreating] = useState(false);
@@ -79,7 +80,14 @@ export default function Employees() {
     setCreating(true);
     try {
       await authedFetch("/api/create-employee", form);
-      setForm({ username: "", password: "", full_name: "", position: "", role: "employee" });
+      setForm({
+        username: "",
+        password: "",
+        full_name: "",
+        position: "",
+        extension: "",
+        role: "employee",
+      });
       await loadEmployees();
     } catch (err) {
       setError(err.message);
@@ -181,7 +189,7 @@ export default function Employees() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label>سمت شغلی (اختیاری)</Label>
+            <Label>سمت شغلی (ایاری)</Label>
             <Input
               list="position-suggestions"
               value={form.position}
