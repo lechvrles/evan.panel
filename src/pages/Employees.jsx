@@ -136,7 +136,7 @@ export default function Employees() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6">
       <div>
         <h1 className="font-heading text-2xl sm:text-3xl font-semibold tracking-tight">
           مدیریت کارمندان
@@ -189,7 +189,7 @@ export default function Employees() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label>سمت شغلی (ایاری)</Label>
+            <Label>سمت شغلی (اختیاری)</Label>
             <Input
               list="position-suggestions"
               value={form.position}
@@ -220,6 +220,18 @@ export default function Employees() {
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-1.5">
+            <Label>شماره داخلی (اختیاری)</Label>
+            <Input
+              type="text"
+              inputMode="numeric"
+              value={form.extension}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, extension: e.target.value.replace(/\D/g, "") }))
+              }
+              placeholder="مثلاً: 1510"
+            />
+          </div>
         </div>
         <div className="flex justify-end">
           <Button type="submit" disabled={creating}>
@@ -244,103 +256,154 @@ export default function Employees() {
             <Loader2 className="w-5 h-5 animate-spin" />
           </div>
         ) : (
-          <ul className="divide-y divide-border">
-            {employees.map((emp) => (
-              <li key={emp.id} className="flex flex-wrap items-center gap-3 px-5 py-4">
-                <div className="w-9 h-9 rounded-full bg-accent grid place-items-center shrink-0">
-                  <UserIcon className="w-4 h-4 text-muted-foreground" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate">
-                    {emp.full_name || "—"}
-                    {emp.id === current?.id && (
-                      <span className="text-xs text-muted-foreground"> (شما)</span>
-                    )}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">@{emp.username}</p>
-                  <Input
-                    defaultValue={emp.position || ""}
-                    placeholder="سمت شغلی…"
-                    list="position-suggestions"
-                    onBlur={(e) => {
-                      const value = e.target.value.trim();
-                      if (value !== (emp.position || "")) {
-                        handleRoleOrStatusChange(emp.id, { position: value });
-                      }
-                    }}
-                    className="h-7 mt-1 text-xs px-2 max-w-[160px]"
-                  />
-                  <Input
-                    defaultValue={emp.extension || ""}
-                    placeholder="داخلی…"
-                    onBlur={(e) => {
-                      const value = e.target.value.trim();
-                      if (value !== (emp.extension || "")) {
-                        handleRoleOrStatusChange(emp.id, { extension: value });
-                      }
-                    }}
-                    className="h-7 mt-1 text-xs px-2 max-w-[100px]"
-                  />
-                </div>
-
-                <Select
-                  value={emp.role}
-                  onValueChange={(v) => handleRoleOrStatusChange(emp.id, { role: v })}
-                  disabled={emp.id === current?.id}
-                >
-                  <SelectTrigger className="w-28 h-9 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ROLE_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select
-                  value={emp.status}
-                  onValueChange={(v) => handleRoleOrStatusChange(emp.id, { status: v })}
-                  disabled={emp.id === current?.id}
-                >
-                  <SelectTrigger className="w-24 h-9 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">فعال</SelectItem>
-                    <SelectItem value="inactive">غیرفعال</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setResetTarget(emp);
-                    setResetValue("");
-                  }}
-                  className="w-9 h-9 rounded-lg grid place-items-center text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                  aria-label="بازنشانی رمز عبور"
-                  title="بازنشانی رمز عبور"
-                >
-                  <KeyRound className="w-4 h-4" />
-                </button>
-
-                {emp.id !== current?.id && (
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(emp)}
-                    className="w-9 h-9 rounded-lg grid place-items-center text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                    aria-label="حذف کارمند"
-                    title="حذف کارمند"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] text-sm">
+              <thead>
+                <tr className="bg-muted/40 text-xs text-muted-foreground">
+                  <th className="px-5 py-3 text-right font-medium">کارمند</th>
+                  <th className="px-3 py-3 text-right font-medium">سمت شغلی</th>
+                  <th className="px-3 py-3 text-right font-medium">داخلی</th>
+                  <th className="px-3 py-3 text-right font-medium">نقش</th>
+                  <th className="px-3 py-3 text-right font-medium">وضعیت</th>
+                  <th className="px-5 py-3 text-left font-medium">
+                    <span className="sr-only">عملیات</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {employees.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-5 py-10 text-center text-muted-foreground">
+                      هنوز کارمندی ثبت نشده است.
+                    </td>
+                  </tr>
                 )}
-              </li>
-            ))}
-          </ul>
+                {employees.map((emp) => {
+                  const isSelf = emp.id === current?.id;
+                  return (
+                    <tr key={emp.id} className="hover:bg-accent/40 transition-colors">
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-full bg-accent grid place-items-center shrink-0">
+                            <UserIcon className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">
+                              {emp.full_name || "—"}
+                              {isSelf && (
+                                <span className="text-xs text-muted-foreground"> (شما)</span>
+                              )}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate" dir="ltr">
+                              @{emp.username}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="px-3 py-3">
+                        <Input
+                          defaultValue={emp.position || ""}
+                          placeholder="سمت شغلی…"
+                          list="position-suggestions"
+                          onBlur={(e) => {
+                            const value = e.target.value.trim();
+                            if (value !== (emp.position || "")) {
+                              handleRoleOrStatusChange(emp.id, { position: value });
+                            }
+                          }}
+                          className="h-9 text-xs px-3 w-44 bg-transparent border-transparent hover:border-border focus:border-input"
+                        />
+                      </td>
+
+                      <td className="px-3 py-3">
+                        <Input
+                          defaultValue={emp.extension || ""}
+                          placeholder="داخلی…"
+                          inputMode="numeric"
+                          onBlur={(e) => {
+                            const value = e.target.value.replace(/\D/g, "").trim();
+                            if (value !== (emp.extension || "")) {
+                              handleRoleOrStatusChange(emp.id, { extension: value });
+                            }
+                          }}
+                          className="h-9 text-xs px-3 w-24 bg-transparent border-transparent hover:border-border focus:border-input"
+                        />
+                      </td>
+
+                      <td className="px-3 py-3">
+                        <Select
+                          value={emp.role}
+                          onValueChange={(v) => handleRoleOrStatusChange(emp.id, { role: v })}
+                          disabled={isSelf}
+                        >
+                          <SelectTrigger className="w-32 h-9 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ROLE_OPTIONS.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </td>
+
+                      <td className="px-3 py-3">
+                        <Select
+                          value={emp.status}
+                          onValueChange={(v) => handleRoleOrStatusChange(emp.id, { status: v })}
+                          disabled={isSelf}
+                        >
+                          <SelectTrigger className="w-28 h-9 text-xs">
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ml-2 shrink-0 ${
+                                emp.status === "active" ? "bg-emerald-500" : "bg-muted-foreground/50"
+                              }`}
+                            />
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="active">فعال</SelectItem>
+                            <SelectItem value="inactive">غیرفعال</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </td>
+
+                      <td className="px-5 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setResetTarget(emp);
+                              setResetValue("");
+                            }}
+                            className="w-9 h-9 rounded-lg grid place-items-center text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                            aria-label="بازنشانی رمز عبور"
+                            title="بازنشانی رمز عبور"
+                          >
+                            <KeyRound className="w-4 h-4" />
+                          </button>
+                          {!isSelf && (
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(emp)}
+                              className="w-9 h-9 rounded-lg grid place-items-center text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                              aria-label="حذف کارمند"
+                              title="حذف کارمند"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
