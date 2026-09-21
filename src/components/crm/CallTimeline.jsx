@@ -17,6 +17,24 @@ const ACCEPTED_FILES =
   "image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.txt,.csv";
 const MAX_FILE_MB = 15;
 
+// رنگ ثابت برای هر «سمت»، تا همیشه یک رنگ ثابت به همون سمت اختصاص پیدا کنه
+const NAME_COLORS = [
+  "text-rose-600",
+  "text-blue-600",
+  "text-emerald-600",
+  "text-amber-600",
+  "text-purple-600",
+  "text-cyan-600",
+  "text-pink-600",
+  "text-indigo-600",
+];
+function colorForLabel(label) {
+  const str = label || "کارمند";
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  return NAME_COLORS[Math.abs(hash) % NAME_COLORS.length];
+}
+
 function formatDuration(start, end) {
   if (!start || !end) return null;
   const d = Math.max(0, end - start);
@@ -95,7 +113,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
             .order("created_at", { ascending: true }),
           supabase
             .from("customer_messages")
-            .select("*, employees(full_name)")
+            .select("*, employees(full_name, position)")
             .eq("customer_id", customerId)
             .order("created_at", { ascending: true }),
         ]);
@@ -296,13 +314,13 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
                 key={`report-${item.id}`}
                 className="max-w-[85%] mr-auto rounded-2xl rounded-tr-sm bg-emerald-50/90 border border-emerald-200/70 px-4 py-3.5 shadow-sm"
               >
-                <div className="flex items-center justify-between text-xs font-semibold text-emerald-900 mb-1.5 border-b border-emerald-200/50 pb-1.5">
-                  <span className="flex items-center gap-1.5">
+                <div className="flex items-center justify-between gap-3 text-xs font-semibold text-emerald-900 mb-1.5 border-b border-emerald-200/50 pb-1.5">
+                  <span className="flex items-center gap-1.5 shrink-0">
                     <PhoneCall className="w-3.5 h-3.5 text-emerald-700" />
                     {formatTime(item.created_at)}
                   </span>
                   {item.subject && (
-                    <span className="bg-emerald-200/60 px-2 py-0.5 rounded text-emerald-900 font-medium">
+                    <span className="text-emerald-900 font-medium truncate">
                       {item.subject}
                     </span>
                   )}
@@ -341,9 +359,11 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
                 key={`msg-${item.id}`}
                 className="max-w-[85%] mr-auto rounded-2xl rounded-tr-sm bg-accent/70 border border-border px-4 py-3 shadow-sm"
               >
-                <div className="flex items-center justify-between text-xs font-semibold text-foreground/80 mb-1">
-                  <span>{item.employees?.full_name || "کارمند"}</span>
-                  <span className="text-muted-foreground font-normal">
+                <div className="flex items-center justify-between gap-3 text-xs font-semibold mb-1">
+                  <span className={colorForLabel(item.employees?.position || item.employees?.full_name)}>
+                    {item.employees?.full_name || "کارمند"}
+                  </span>
+                  <span className="text-muted-foreground font-normal shrink-0">
                     {formatTime(item.created_at)}
                   </span>
                 </div>
@@ -363,7 +383,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
                         />
                       </a>
                     ) : (
-                    <a  
+                    <a
                       href={fileUrls[item.id] || "#"}
                         target="_blank"
                         rel="noreferrer"
@@ -418,23 +438,28 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
             <Paperclip className="w-4 h-4" />
           </button>
 
-          <input
-            type="text"
-            value={messageText}
-            onChange={(e) => setMessageText(e.target.value)}
-            placeholder="پیام بنویسید…"
-            className="flex-1 min-w-0 h-10 rounded-full bg-accent/40 border border-transparent focus:border-ring focus:outline-none px-4 text-sm"
-          />
-
-          <button
-            type="submit"
-            disabled={sending || (!messageText.trim() && !pendingFile)}
-            className="w-9 h-9 rounded-full bg-primary text-primary-foreground grid place-items-center hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 shrink-0"
-            aria-label="ارسال پیام"
-            title="ارسال پیام"
-          >
-            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-          </button>
+          <div className="relative flex-1 min-w-0">
+            <input
+              type="text"
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
+              placeholder="پیام بنویسید…"
+              className="w-full h-8 rounded-full bg-accent/40 border border-transparent focus:border-ring focus:outline-none pr-3 pl-9 text-xs"
+            />
+            <button
+              type="submit"
+              disabled={sending || (!messageText.trim() && !pendingFile)}
+              className="absolute left-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-primary text-primary-foreground grid place-items-center hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
+              aria-label="ارسال پیام"
+              title="ارسال پیام"
+            >
+              {sending ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <Send className="w-3 h-3" />
+              )}
+            </button>
+          </div>
 
           <button
             type="button"
