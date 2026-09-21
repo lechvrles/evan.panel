@@ -6,7 +6,7 @@ import { useNotifications } from "@/lib/NotificationsContext";
 import { supabase } from "@/lib/supabaseClient";
 import { Image } from "@/components/ui/image";
 
-const LOGO = "src/images/evanlogo.webp";
+const LOGO = "https://evantechco.com/wp-content/uploads/2022/05/logo.webp";
 
 export default function CrmHeader({ dashboardOpen, onToggleDashboard }) {
   const navigate = useNavigate();
