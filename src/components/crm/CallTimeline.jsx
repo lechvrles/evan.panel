@@ -37,9 +37,14 @@ function colorForLabel(label) {
 
 function formatDuration(start, end) {
   if (!start || !end) return null;
-  const d = Math.max(0, end - start);
-  const m = Math.floor(d / 60);
-  const s = d % 60;
+  
+  // Convert Unix timestamps to milliseconds if needed
+  const startTime = typeof start === 'number' ? start * 1000 : new Date(start).getTime();
+  const endTime = typeof end === 'number' ? end * 1000 : new Date(end).getTime();
+  
+  const d = Math.max(0, endTime - startTime);
+  const m = Math.floor(d / 60000); // 60 * 1000 milliseconds in a minute
+  const s = Math.floor((d % 60000) / 1000);
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
@@ -108,7 +113,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
         await Promise.all([
           supabase
             .from("call_reports")
-            .select("*")
+            .select("*, employees(full_name, position)")
             .eq("customer_id", customerId)
             .order("created_at", { ascending: true }),
           supabase
@@ -314,45 +319,55 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
                 key={`report-${item.id}`}
                 className="max-w-[85%] mr-auto rounded-2xl rounded-tr-sm bg-emerald-50/90 border border-emerald-200/70 px-4 py-3.5 shadow-sm"
               >
-                <div className="flex items-center justify-between gap-3 text-xs font-semibold text-emerald-900 mb-1.5 border-b border-emerald-200/50 pb-1.5">
+                {/* Top section: Time and operator name */}
+                <div className="flex items-center justify-between gap-3 text-xs font-semibold text-emerald-900 mb-2 border-b border-emerald-200/50 pb-1.5">
                   <span className="flex items-center gap-1.5 shrink-0">
                     <PhoneCall className="w-3.5 h-3.5 text-emerald-700" />
                     {formatTime(item.created_at)}
+                    {item.employees?.full_name && (
+                      <span className="text-emerald-800 font-normal mr-2">• {item.employees.full_name}</span>
+                    )}
                   </span>
+                </div>
+
+                {/* Middle section: Subject and report */}
+                <div className="mb-2">
                   {item.subject && (
-                    <span className="text-emerald-900 font-medium truncate">
+                    <div className="text-sm font-medium text-emerald-900 mb-1">
                       {item.subject}
-                    </span>
+                    </div>
+                  )}
+                  {item.report && (
+                    <p className="text-sm text-foreground/90 whitespace-pre-wrap">
+                      {item.report}
+                    </p>
                   )}
                 </div>
 
-                {item.report && (
-                  <p className="text-sm text-foreground/90 mt-1 whitespace-pre-wrap">
-                    {item.report}
-                  </p>
-                )}
-
-                {formatDuration(item.start_time, item.end_time) && (
-                  <div className="flex items-center gap-2 mt-2 text-xs text-emerald-800/80">
-                    <span>مدت: {formatDuration(item.start_time, item.end_time)}</span>
-                  </div>
-                )}
-
-                {item.call_id && item.file_id && item.file_id !== "0" && (
-                  <div className="mt-3 pt-2.5 border-t border-emerald-200/60">
-                    {audioUrls[item.id] ? (
-                      <audio controls className="w-full h-9 rounded-lg">
-                        <source src={audioUrls[item.id]} type="audio/mpeg" />
-                        مرورگر شما از پخش صوت پشتیبانی نمی‌کند.
-                      </audio>
-                    ) : audioLoading[item.id] ? (
-                      <div className="flex items-center gap-2 text-xs text-emerald-800/70">
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        در حال دریافت فایل صوتی…
-                      </div>
-                    ) : null}
-                  </div>
-                )}
+                {/* Bottom section: Call duration and recording file */}
+                <div className="pt-2 border-t border-emerald-200/60">
+                  {formatDuration(item.start_time, item.end_time) && (
+                    <div className="flex items-center gap-2 mb-2 text-xs text-emerald-800/80">
+                      <span>مدت: {formatDuration(item.start_time, item.end_time)}</span>
+                    </div>
+                  )}
+                  
+                  {item.call_id && item.file_id && item.file_id !== "0" && (
+                    <div className="mt-2">
+                      {audioUrls[item.id] ? (
+                        <audio controls className="w-full h-9 rounded-lg">
+                          <source src={audioUrls[item.id]} type="audio/mpeg" />
+                          مرورگر شما از پخش صوت پشتیبانی نمی‌کند.
+                        </audio>
+                      ) : audioLoading[item.id] ? (
+                        <div className="flex items-center gap-2 text-xs text-emerald-800/70">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          در حال دریافت فایل صوتی…
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <div
