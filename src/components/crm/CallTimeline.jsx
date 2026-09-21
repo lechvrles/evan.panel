@@ -37,11 +37,11 @@ function colorForLabel(label) {
 
 function formatDuration(start, end) {
   if (!start || !end) return null;
-  
+
   // Convert Unix timestamps to milliseconds if needed
   const startTime = typeof start === 'number' ? start * 1000 : new Date(start).getTime();
   const endTime = typeof end === 'number' ? end * 1000 : new Date(end).getTime();
-  
+
   const d = Math.max(0, endTime - startTime);
   const m = Math.floor(d / 60000); // 60 * 1000 milliseconds in a minute
   const s = Math.floor((d % 60000) / 1000);
@@ -325,7 +325,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
                     <PhoneCall className="w-3.5 h-3.5 text-emerald-700" />
                     {formatTime(item.created_at)}
                     {item.employees?.full_name && (
-                      <span className="text-emerald-800 font-normal mr-2">• {item.employees.full_name}</span>
+                      <span className="text-emerald-800 font-semibold mr-2">• {item.employees.full_name}</span>
                     )}
                   </span>
                 </div>
@@ -351,7 +351,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
                       <span>مدت: {formatDuration(item.start_time, item.end_time)}</span>
                     </div>
                   )}
-                  
+
                   {item.call_id && item.file_id && item.file_id !== "0" && (
                     <div className="mt-2">
                       {audioUrls[item.id] ? (
