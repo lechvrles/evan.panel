@@ -6,7 +6,7 @@ import { useNotifications } from "@/lib/NotificationsContext";
 import { supabase } from "@/lib/supabaseClient";
 import { Image } from "@/components/ui/image";
 
-const LOGO = "https://media.base44.com/images/public/6a869b2036726c8f4d4f7204/9b5e3dc2c_-6.png";
+const LOGO = "src/images/evanlogo.webp";
 
 export default function CrmHeader({ dashboardOpen, onToggleDashboard }) {
   const navigate = useNavigate();

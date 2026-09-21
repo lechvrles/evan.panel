@@ -323,10 +323,10 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
                 <div className="flex items-center justify-between gap-3 text-xs font-semibold text-emerald-900 mb-2 border-b border-emerald-200/50 pb-1.5">
                   <span className="flex items-center gap-1.5 shrink-0">
                     <PhoneCall className="w-3.5 h-3.5 text-emerald-700" />
-                    {formatTime(item.created_at)}
                     {item.employees?.full_name && (
-                      <span className="text-emerald-800 font-semibold mr-2">• {item.employees.full_name}</span>
+                      <span className="text-emerald-800 font-semibold mr-2">{item.employees.full_name}</span>
                     )}
+                    {formatTime(item.created_at)}
                   </span>
                 </div>
 
