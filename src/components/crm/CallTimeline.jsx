@@ -324,8 +324,10 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
                   <span className="flex items-center gap-1.5 shrink-0">
                     <PhoneCall className="w-3.5 h-3.5 text-emerald-700" />
                     {item.employees?.full_name && (
-                      <span className="text-emerald-800 font-semibold mr-2">{item.employees.full_name}</span>
+                      <span className="text-emerald-800 font-semibold">{item.employees.full_name}</span>
                     )}
+                  </span>
+                  <span className="text-emerald-800/80 font-normal shrink-0">
                     {formatTime(item.created_at)}
                   </span>
                 </div>
@@ -453,27 +455,29 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
             <Paperclip className="w-4 h-4" />
           </button>
 
-          <div className="relative flex-1 min-w-0">
+          <div className="relative w-2/3 min-w-0">
             <input
               type="text"
               value={messageText}
               onChange={(e) => setMessageText(e.target.value)}
               placeholder="پیام بنویسید…"
-              className="w-full h-8 rounded-full bg-accent/40 border border-transparent focus:border-ring focus:outline-none pr-3 pl-9 text-xs"
+              className="w-full h-10 rounded-full bg-accent/40 border border-transparent focus:border-ring focus:outline-none pr-4 pl-10 text-sm"
             />
-            <button
-              type="submit"
-              disabled={sending || (!messageText.trim() && !pendingFile)}
-              className="absolute left-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-primary text-primary-foreground grid place-items-center hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
-              aria-label="ارسال پیام"
-              title="ارسال پیام"
-            >
-              {sending ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
-              ) : (
-                <Send className="w-3 h-3" />
-              )}
-            </button>
+            {(messageText.trim() || pendingFile) && (
+              <button
+                type="submit"
+                disabled={sending}
+                className="absolute left-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-primary text-primary-foreground grid place-items-center hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
+                aria-label="ارسال پیام"
+                title="ارسال پیام"
+              >
+                {sending ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Send className="w-3.5 h-3.5" />
+                )}
+              </button>
+            )}
           </div>
 
           <button
