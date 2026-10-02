@@ -182,7 +182,7 @@ export default function CallReportPanel({
                 type="time"
                 value={startTimeStr}
                 onChange={(e) => setStartTimeStr(e.target.value)}
-                className="h-11 text-center font-mono tracking-wide rounded-xl bg-card border-input focus-visible:border-ring"
+                className="h-11 text-center font-mono tracking-wide rounded-xl bg-card border-input focus-visible:border-ring [color-scheme:light]"
               />
             </div>
             <div className="space-y-1.5">
@@ -191,7 +191,7 @@ export default function CallReportPanel({
                 type="time"
                 value={endTimeStr}
                 onChange={(e) => setEndTimeStr(e.target.value)}
-                className="h-11 text-center font-mono tracking-wide rounded-xl bg-card border-input focus-visible:border-ring"
+                className="h-11 text-center font-mono tracking-wide rounded-xl bg-card border-input focus-visible:border-ring [color-scheme:light]"
               />
             </div>
           </div>

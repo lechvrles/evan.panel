@@ -105,22 +105,22 @@ export default function JalaliDatePicker({ value, onChange, className }) {
         <div className="mb-2 flex items-center justify-between">
           <button
             type="button"
-            onClick={() => moveMonth(1)}
+            onClick={() => moveMonth(-1)}
             className="grid h-7 w-7 place-items-center rounded-md border border-input hover:bg-muted"
-            aria-label="ماه بعد"
+            aria-label="ماه قبل"
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronRight className="h-4 w-4" />
           </button>
           <div className="text-sm font-medium">
             {JALALI_MONTHS[view.jm - 1]} {toFa(view.jy)}
           </div>
           <button
             type="button"
-            onClick={() => moveMonth(-1)}
+            onClick={() => moveMonth(1)}
             className="grid h-7 w-7 place-items-center rounded-md border border-input hover:bg-muted"
-            aria-label="ماه قبل"
+            aria-label="ماه بعد"
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronLeft className="h-4 w-4" />
           </button>
         </div>
         <div className="grid grid-cols-7 gap-1">
