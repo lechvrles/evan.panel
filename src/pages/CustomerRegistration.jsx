@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,10 +28,11 @@ const stripToEmailChars = (value) => value.replace(EMAIL_CHARS_REGEX, "");
 
 export default function CustomerRegistration() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [form, setForm] = useState({
     first_name: "",
     last_name: "",
-    phone: "",
+    phone: location.state?.phone || "",
     title: "",
     email: "",
     project_name: "",

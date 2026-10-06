@@ -40,12 +40,25 @@ export default async function handler(req, res) {
       matchedCustomerId = match?.id || null;
     }
 
+    // طرف «ما» (داخلی اپراتور) رو پیدا و با جدول کارمندان تطبیق بده
+    const ourNumber = type === "incoming" ? num(call_dest) : num(call_source);
+    let handledByEmployeeId = null;
+    if (ourNumber) {
+      const { data: empMatch } = await admin
+        .from("employees")
+        .select("id")
+        .eq("extension", ourNumber)
+        .maybeSingle();
+      handledByEmployeeId = empMatch?.id || null;
+    }
+
     if (event !== "recording.merged.ready") {
       // ─── رویداد پایان تماس (معمولی) ───
       const { error: insertError } = await admin.from("call_logs").insert([
         {
           phone: customerPhone || null,
           matched_customer_id: matchedCustomerId,
+          employee_id: handledByEmployeeId,
           call_id,
           file_id: file_id && file_id !== "0" ? file_id : null,
           raw_payload: body,

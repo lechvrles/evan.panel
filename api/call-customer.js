@@ -80,6 +80,7 @@ export default async function handler(req, res) {
     await admin.from("call_logs").insert([
       {
         phone: normalized,
+        employee_id: callerId,
         raw_payload: { direction: "outgoing_click_to_call", ...providerJson.data },
       },
     ]);

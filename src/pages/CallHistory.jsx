@@ -8,6 +8,8 @@ import {
   PhoneMissed,
   Inbox,
   User as UserIcon,
+  Headset,
+  UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -27,14 +29,10 @@ const STATUS_LABELS = {
 function interpretCall(row) {
   const p = row.raw_payload || {};
   if (p.direction === "outgoing_click_to_call") {
-    return {
-      kind: "outgoing",
-      statusRaw: p.call_status,
-      duration: null,
-    };
+    return { kind: "outgoing", statusRaw: p.call_status, duration: null };
   }
   return {
-    kind: p.type || "incoming", // incoming | outgoing | local
+    kind: p.type || "incoming",
     statusRaw: p.status,
     duration: p.time_talk,
   };
@@ -55,16 +53,13 @@ function formatDate(iso) {
   }).format(new Date(iso));
 }
 
-const KIND_ICON = {
-  incoming: PhoneIncoming,
-  outgoing: PhoneOutgoing,
-  local: PhoneMissed,
-};
+const KIND_ICON = { incoming: PhoneIncoming, outgoing: PhoneOutgoing, local: PhoneMissed };
 
 export default function CallHistory() {
   const navigate = useNavigate();
   const [rows, setRows] = useState(null);
   const [customersById, setCustomersById] = useState({});
+  const [employeesById, setEmployeesById] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -80,12 +75,14 @@ export default function CallHistory() {
       const list = error ? [] : data || [];
       setRows(list);
 
-      const ids = [...new Set(list.map((r) => r.matched_customer_id).filter(Boolean))];
-      if (ids.length) {
+      const customerIds = [...new Set(list.map((r) => r.matched_customer_id).filter(Boolean))];
+      const employeeIds = [...new Set(list.map((r) => r.employee_id).filter(Boolean))];
+
+      if (customerIds.length) {
         const { data: customers } = await supabase
           .from("customers")
           .select("id, first_name, last_name")
-          .in("id", ids);
+          .in("id", customerIds);
         if (active && customers) {
           const map = {};
           customers.forEach((c) => {
@@ -94,12 +91,32 @@ export default function CallHistory() {
           setCustomersById(map);
         }
       }
+
+      if (employeeIds.length) {
+        const { data: employees } = await supabase
+          .from("employees")
+          .select("id, full_name, username")
+          .in("id", employeeIds);
+        if (active && employees) {
+          const map = {};
+          employees.forEach((e) => {
+            map[e.id] = e.full_name || e.username;
+          });
+          setEmployeesById(map);
+        }
+      }
+
       setLoading(false);
     })();
     return () => {
       active = false;
     };
   }, []);
+
+  const goToRegisterWithPhone = (e, phone) => {
+    e.stopPropagation();
+    navigate("/customers/register", { state: { phone } });
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -134,6 +151,7 @@ export default function CallHistory() {
               const customerName = row.matched_customer_id
                 ? customersById[row.matched_customer_id]
                 : null;
+              const operatorName = row.employee_id ? employeesById[row.employee_id] : null;
 
               return (
                 <li
@@ -161,10 +179,22 @@ export default function CallHistory() {
                         row.phone || "شماره نامشخص"
                       )}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {row.phone} · {formatDate(row.received_at)}
+                    <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
+                      <span>{row.phone}</span>
+                      <span>·</span>
+                      <span>{formatDate(row.received_at)}</span>
+                      {operatorName && (
+                        <>
+                          <span>·</span>
+                          <span className="inline-flex items-center gap-1 text-foreground/70">
+                            <Headset className="w-3 h-3" />
+                            {operatorName}
+                          </span>
+                        </>
+                      )}
                     </p>
                   </div>
+
                   <span className="text-xs text-muted-foreground whitespace-nowrap">
                     {formatDuration(duration)}
                   </span>
@@ -176,6 +206,18 @@ export default function CallHistory() {
                   >
                     {status.label}
                   </span>
+
+                  {!row.matched_customer_id && row.phone && (
+                    <button
+                      type="button"
+                      onClick={(e) => goToRegisterWithPhone(e, row.phone)}
+                      className="shrink-0 inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-full bg-primary text-primary-foreground hover:opacity-90 active:scale-95 transition-all"
+                      title="افزودن به‌عنوان مشتری جدید"
+                    >
+                      <UserPlus className="w-3.5 h-3.5" />
+                      افزودن مشتری
+                    </button>
+                  )}
                 </li>
               );
             })}
