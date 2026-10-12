@@ -95,12 +95,12 @@ export default function CallHistory() {
       if (employeeIds.length) {
         const { data: employees } = await supabase
           .from("employees")
-          .select("id, full_name, username")
+          .select("id, full_name")
           .in("id", employeeIds);
         if (active && employees) {
           const map = {};
           employees.forEach((e) => {
-            map[e.id] = e.full_name || e.username;
+            map[e.id] = e.full_name || "اپراتور";
           });
           setEmployeesById(map);
         }
