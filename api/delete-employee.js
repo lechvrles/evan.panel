@@ -18,8 +18,6 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "نمی‌توانید حساب خودتان را حذف کنید" });
     }
 
-    // حذف کاربر از auth.users به‌صورت خودکار ردیف employees مرتبط را هم
-    // (به‌خاطر on delete cascade) پاک می‌کند.
     const { error: deleteError } = await admin.auth.admin.deleteUser(employeeId);
     if (deleteError) {
       return res.status(400).json({ error: deleteError.message });

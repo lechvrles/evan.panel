@@ -1,6 +1,4 @@
 import { createClient } from "@supabase/supabase-js";
-
-
 export function getAdminClient() {
   const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -12,7 +10,6 @@ export function getAdminClient() {
   });
 }
 
-// تأیید می‌کند که درخواست از طرف یک کارمند لاگین‌شده با نقش ادمین ارسال شده.
 export async function requireAdmin(req, admin) {
   const authHeader = req.headers.authorization || "";
   const token = authHeader.replace(/^Bearer\s+/i, "");

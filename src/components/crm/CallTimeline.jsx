@@ -10,12 +10,21 @@ import {
   Send,
   FileText,
   X,
+  Filter,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const ACCEPTED_FILES =
   "image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.txt,.csv";
 const MAX_FILE_MB = 15;
+
+const TYPE_FILTERS = [
+  { id: "all", label: "همه" },
+  { id: "reports", label: "گزارش تماس" },
+  { id: "files", label: "فایل‌ها" },
+];
 
 // رنگ ثابت برای هر «سمت»، تا همیشه یک رنگ ثابت به همون سمت اختصاص پیدا کنه
 const NAME_COLORS = [
@@ -65,6 +74,8 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
   const [feed, setFeed] = useState(null);
   const [loading, setLoading] = useState(true);
   const [messagesRefresh, setMessagesRefresh] = useState(0);
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [personFilter, setPersonFilter] = useState("all");
 
   const [audioUrls, setAudioUrls] = useState({});
   const [audioLoading, setAudioLoading] = useState({});
@@ -81,15 +92,16 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
 
   useEffect(() => {
     setFeed(null);
+    setTypeFilter("all");
+    setPersonFilter("all");
     followLatestRef.current = true;
   }, [customerId]);
 
-  // فقط ناحیهٔ پیام‌ها جابه‌جا شود، نه صفحهٔ اصلی.
   useLayoutEffect(() => {
     if (!loading && followLatestRef.current && messagesRef.current) {
       messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
     }
-  }, [feed, loading]);
+  }, [feed, loading, typeFilter, personFilter]);
 
   // بارگذاری دیرهنگام عکس و صوت نباید آخرین پیام را از دید خارج کند.
   useEffect(() => {
@@ -208,6 +220,37 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
 
   const isEmpty = !loading && feed?.length === 0;
 
+  // ---- فیلتر محتوای چت ----
+  const filterActive = typeFilter !== "all" || personFilter !== "all";
+
+  const peopleMap = {};
+  (feed || []).forEach((item) => {
+    if (item.employee_id) peopleMap[item.employee_id] = item.employees?.full_name || "کارمند";
+  });
+  const people = Object.entries(peopleMap).map(([id, name]) => ({ id, name }));
+
+  const visibleFeed = (feed || []).filter((item) => {
+    if (personFilter !== "all" && item.employee_id !== personFilter) return false;
+    if (typeFilter === "reports") return item._kind === "report";
+    if (typeFilter === "files") return item._kind === "message" && !!item.file_path;
+    return true;
+  });
+  const noMatches = !loading && !isEmpty && (feed?.length ?? 0) > 0 && visibleFeed.length === 0;
+
+  const applyTypeFilter = (value) => {
+    followLatestRef.current = true;
+    setTypeFilter(value);
+  };
+  const applyPersonFilter = (value) => {
+    followLatestRef.current = true;
+    setPersonFilter(value);
+  };
+  const clearFilters = () => {
+    followLatestRef.current = true;
+    setTypeFilter("all");
+    setPersonFilter("all");
+  };
+
   const handlePickFile = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -274,9 +317,85 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
 
   return (
     <div className="rounded-[28px] bg-card border border-border shadow-sm flex flex-col h-[70dvh] lg:h-[calc(100dvh-12rem)] min-h-[20rem] min-w-0 overflow-hidden">
-      <div className="px-6 py-4 border-b border-border shrink-0">
-        <h2 className="font-heading text-base font-semibold">{customerName}</h2>
-      </div>
+    <div className="px-6 py-4 border-b border-border shrink-0 flex items-center justify-between gap-3">
+      <h2 className="font-heading text-base font-semibold truncate">{customerName}</h2>
+
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className={cn(
+              "shrink-0 inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs transition-colors",
+              filterActive
+                ? "bg-primary text-primary-foreground border-primary hover:opacity-90"
+                : "border-border hover:bg-accent"
+            )}
+            aria-label="فیلتر محتوای چت"
+            title="فیلتر محتوای چت"
+          >
+            <Filter className="w-3.5 h-3.5" />
+            فیلتر
+          </button>
+        </PopoverTrigger>
+        <PopoverContent dir="rtl" align="start" className="w-64 space-y-4 p-3">
+          <div>
+            <p className="mb-1.5 text-xs font-semibold">نوع محتوا</p>
+            <div className="flex flex-wrap gap-1.5">
+              {TYPE_FILTERS.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => applyTypeFilter(t.id)}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs transition-colors",
+                    typeFilter === t.id
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-accent/60 hover:bg-accent"
+                  )}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-1.5 text-xs font-semibold">شخص</p>
+            <div className="max-h-44 space-y-0.5 overflow-y-auto">
+              <button
+                type="button"
+                onClick={() => applyPersonFilter("all")}
+                className="flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-xs hover:bg-accent"
+              >
+                همه افراد
+                {personFilter === "all" && <Check className="w-3.5 h-3.5" />}
+              </button>
+              {people.map((person) => (
+                <button
+                  key={person.id}
+                  type="button"
+                  onClick={() => applyPersonFilter(person.id)}
+                  className="flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-xs hover:bg-accent"
+                >
+                  <span className="truncate">{person.name}</span>
+                  {personFilter === person.id && <Check className="w-3.5 h-3.5 shrink-0" />}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {filterActive && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="w-full rounded-md border border-border py-1.5 text-xs hover:bg-accent"
+            >
+              پاک کردن فیلتر
+            </button>
+          )}
+        </PopoverContent>
+      </Popover>
+    </div>
 
       <div
         ref={messagesRef}
@@ -294,20 +413,30 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
           ref={contentRef}
         className={cn(
           "flex flex-col min-h-full",
-          isEmpty ? "items-center justify-center" : "space-y-4"
-        )}
+          (isEmpty || noMatches) ? "items-center justify-center" : "space-y-4"        )}
       >
         {loading && !feed ? (
           <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-        ) : isEmpty ? (
+        ) : noMatches ? (
           <div className="flex flex-col items-center text-muted-foreground">
+            <Filter className="w-8 h-8 mb-2 opacity-60" />
+            <p className="text-sm">موردی با این فیلتر پیدا نشد.</p>
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="mt-2 text-xs text-primary hover:underline"
+            >
+              پاک کردن فیلتر
+            </button>
+          </div>
+        ) : isEmpty ? (          <div className="flex flex-col items-center text-muted-foreground">
             <MessageSquare className="w-8 h-8 mb-2 opacity-60" />
             <p className="text-sm">هنوز پیام یا گزارشی ثبت نشده.</p>
           </div>
         ) : (
-          feed?.map((item, index) => (
+          visibleFeed.map((item, index) => (
             <React.Fragment key={`${item._kind}-${item.id}`}>
-              {(index === 0 || formatDate(item.created_at) !== formatDate(feed[index - 1].created_at)) && (
+              {(index === 0 || formatDate(item.created_at) !== formatDate(visibleFeed[index - 1].created_at)) && (
                 <div role="separator" className="flex items-center justify-center gap-3 shrink-0 py-2 text-xs text-muted-foreground">
                   <span className="h-px flex-1 bg-border" />
                   <span className="rounded-full bg-muted px-3 py-1">{formatDate(item.created_at)}</span>

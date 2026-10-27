@@ -27,7 +27,6 @@ export default async function handler(req, res) {
   }
 
   const cuid = req.query.cuid;
-  // فرانت‌اند این رو به اسم record_id می‌فرسته؛ همون file_id هم هست
   const recordId = req.query.record_id || req.query.file_id;
 
   if (!cuid || !recordId) {
@@ -37,7 +36,6 @@ export default async function handler(req, res) {
   const token = process.env.TELEFONCHY_TOKEN;
   if (!token) return res.status(500).json({ error: "TELEFONCHY_TOKEN missing" });
 
-  // هر چهار مسیر مستندشده رو به‌ترتیب امتحان می‌کنیم تا یکی جواب بده
   const candidates = [
     `${BASE}/calls/record?file_id=${encodeURIComponent(recordId)}&cuid=${encodeURIComponent(cuid)}`,
     `${BASE}/calls/record-quality/merged?cuid=${encodeURIComponent(cuid)}&record_id=${encodeURIComponent(recordId)}`,

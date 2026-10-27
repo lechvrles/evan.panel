@@ -76,7 +76,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // ثبت درخواست برای پیگیری بعدی (با request_id می‌توان بعداً وضعیت را استعلام کرد)
     await admin.from("call_logs").insert([
       {
         phone: normalized,

@@ -23,7 +23,6 @@ export default async function handler(req, res) {
     const admin = getAdminClient();
     const event = body.event || null;
 
-    // 🔧 همیشه call_id و file_id را با String() بگیرید (برای باگ ۲ هم لازم است)
     const call_id = body.call_id != null ? String(body.call_id) : null;
     const file_id = body.file_id != null ? String(body.file_id) : null;
     const { type, call_source, call_dest } = body;
@@ -40,7 +39,6 @@ export default async function handler(req, res) {
       matchedCustomerId = match?.id || null;
     }
 
-    // طرف «ما» (داخلی اپراتور) رو پیدا و با جدول کارمندان تطبیق بده
     const ourNumber = type === "incoming" ? num(call_dest) : num(call_source);
     let handledByEmployeeId = null;
     if (ourNumber) {
@@ -81,7 +79,7 @@ export default async function handler(req, res) {
         }
       }
     } else {
-      // ─── 🔧 رویداد جدید: فایل صوتی ترکیبی آماده شد ───
+      // ─── 🔧 رویداد جدید: فایل صوتی ──
       if (call_id && file_id && file_id !== "0") {
         const { error: updateLogError } = await admin
           .from("call_logs")

@@ -44,7 +44,6 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: message });
     }
 
-    // اطمینان از اینکه role/position/extension درست ست شدن (تریگر پیش‌فرض روی employee هم کار می‌کند)
     if (safeRole !== "employee" || position || extension) {
       await admin
         .from("employees")
