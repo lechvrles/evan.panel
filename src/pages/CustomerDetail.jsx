@@ -21,6 +21,7 @@ import { Image } from "@/components/ui/image";
 import { cn } from "@/lib/utils";
 import CallTimeline from "@/components/crm/CallTimeline";
 import CallReportPanel from "@/components/crm/CallReportPanel";
+import CustomerTags from "@/components/crm/CustomerTags";
 
 export default function CustomerDetail() {
   const { id } = useParams();
@@ -127,6 +128,8 @@ export default function CustomerDetail() {
             {customer.title && (
               <p className="text-sm text-muted-foreground mt-1">{customer.title}</p>
             )}
+
+            <CustomerTags customerId={id} />
 
             <CallButton
               phone={customer.phone}
