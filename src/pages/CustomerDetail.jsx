@@ -112,7 +112,7 @@ export default function CustomerDetail() {
             >
               <Pencil className="w-4 h-4" />
             </button>
-            <div className="w-24 h-24 rounded-full overflow-hidden bg-accent grid place-items-center">
+            <div className="w-24 h-24 shrink-0 rounded-full bg-accent grid place-items-center">
               {customer.avatar_url ? (
                 <Image
                   src={customer.avatar_url}
@@ -243,13 +243,20 @@ function CallButton({ phone, customerName, onCallSuccess }) {
   };
 
   return (
-    <div className="mt-4 flex flex-col items-center gap-2">
+    <div className="absolute bottom-4 left-4 flex items-center gap-2">
+      {status !== "idle" && (
+        <p className="text-xs text-muted-foreground max-w-[150px] truncate">
+          {status === "calling" && "در حال برقراری تماس…"}
+          {status === "success" && "تماس برقرار شد"}
+          {status === "error" && (errorMsg || "خطا در تماس")}
+        </p>
+      )}
       <button
         type="button"
         onClick={handleCall}
         disabled={!phone || status === "calling"}
         className={cn(
-          "w-14 h-14 rounded-full grid place-items-center transition-all shadow-sm",
+          "w-9 h-9 rounded-full grid place-items-center transition-all shadow-sm",
           status === "success"
             ? "bg-emerald-500 text-white"
             : status === "error"
@@ -261,13 +268,13 @@ function CallButton({ phone, customerName, onCallSuccess }) {
         title={phone ? `تماس با ${phone}` : "شماره تلفن ثبت نشده"}
       >
         {status === "calling" ? (
-          <Loader2 className="w-5 h-5 animate-spin" />
+          <Loader2 className="w-4 h-4 animate-spin" />
         ) : status === "success" ? (
-          <CheckCircle2 className="w-6 h-6" />
+          <CheckCircle2 className="w-4 h-4" />
         ) : status === "error" ? (
-          <XCircle className="w-6 h-6" />
+          <XCircle className="w-4 h-4" />
         ) : (
-          <PhoneCall className="w-5 h-5" />
+          <PhoneCall className="w-4 h-4" />
         )}
       </button>
       <p className="text-xs text-muted-foreground h-4">
