@@ -1,4 +1,4 @@
-iimport { getAdminClient, requireAdmin } from "./_admin.js";
+import { getAdminClient, requireAdmin } from "./_admin.js";
 
 const INTERNAL_EMAIL_DOMAIN = "evan-crm.internal";
 const toInternalEmail = (username) =>
