@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import CallTimeline from "@/components/crm/CallTimeline";
 import CallReportPanel from "@/components/crm/CallReportPanel";
 import CustomerTags from "@/components/crm/CustomerTags";
+import CustomerTasks from "@/components/crm/CustomerTasks";
 
 export default function CustomerDetail() {
   const { id } = useParams();
@@ -169,6 +170,7 @@ export default function CustomerDetail() {
               )}
             </div>
           </div>
+          <CustomerTasks customerId={id} customerName={fullName} />
         </div>
 
         {/* ستون اصلی — تاریخچه تماس‌ها (چت‌مانند) */}

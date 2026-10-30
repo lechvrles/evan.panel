@@ -1,6 +1,7 @@
 import React from "react";
 import { useAuth } from "@/lib/AuthContext";
 import HomeCustomerList from "@/components/crm/HomeCustomerList";
+import MyTasks from "@/components/crm/MyTasks";
 
 export default function Home() {
   const { employee } = useAuth();
@@ -17,6 +18,7 @@ export default function Home() {
         </p>
       </div>
       <HomeCustomerList />
+      <MyTasks />
     </div>
   );
 }
