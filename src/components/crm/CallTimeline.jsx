@@ -15,6 +15,44 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ..., PhoneIncoming, PhoneOutgoing } from "lucide-react";
+
+const aKey = (r) => `${r._kind}-${r.id}`; // جلوگیری از تداخل id گزارش و لاگ
+
+function formatTalk(sec) {
+  const n = Number(sec);
+  if (!n || Number.isNaN(n)) return null;
+  return `${Math.floor(n / 60)}:${String(Math.floor(n % 60)).padStart(2, "0")}`;
+}
+
+function CallLogBubble({ item, audioUrl, audioLoading }) {
+  const p = item.raw_payload || {};
+  const incoming = p.type === "incoming";
+  const Icon = incoming ? PhoneIncoming : PhoneOutgoing;
+  const talk = formatTalk(p.time_talk);
+  return (
+    <div className="max-w-[85%] mr-auto rounded-2xl rounded-tr-sm bg-sky-50/90 border border-sky-200/70 px-4 py-3.5 shadow-sm">
+      <div className="flex items-center justify-between gap-3 text-xs font-semibold text-sky-900 mb-2 border-b border-sky-200/50 pb-1.5">
+        <span className="flex items-center gap-1.5">
+          <Icon className="w-3.5 h-3.5 text-sky-700" />
+          {incoming ? "تماس ورودی" : "تماس خروجی"}
+        </span>
+        <span className="text-sky-800/80 font-normal">{formatTime(item.created_at)}</span>
+      </div>
+      {talk && <p className="text-xs text-sky-800/80 mb-2">مدت: {talk}</p>}
+      {audioUrl ? (
+        <audio controls className="w-full h-9 rounded-lg">
+          <source src={audioUrl} type="audio/mpeg" />
+        </audio>
+      ) : audioLoading ? (
+        <div className="flex items-center gap-2 text-xs text-sky-800/70">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          در حال دریافت فایل صوتی…
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 const ACCEPTED_FILES =
   "image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.txt,.csv";
@@ -121,24 +159,28 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
     let active = true;
     setLoading(true);
     (async () => {
-      const [{ data: reportsData, error: reportsError }, { data: messagesData, error: messagesError }] =
-        await Promise.all([
-          supabase
-            .from("call_reports")
-            .select("*, employees(full_name, position)")
-            .eq("customer_id", customerId)
-            .order("created_at", { ascending: true }),
-          supabase
-            .from("customer_messages")
-            .select("*, employees(full_name, position)")
-            .eq("customer_id", customerId)
-            .order("created_at", { ascending: true }),
-        ]);
+      const [reportsRes, messagesRes, callsRes] = await Promise.all([
+        supabase.from("call_reports").select("*, employees(full_name, position)")
+          .eq("customer_id", customerId).order("created_at", { ascending: true }),
+        supabase.from("customer_messages").select("*, employees(full_name, position)")
+          .eq("customer_id", customerId).order("created_at", { ascending: true }),
+        supabase.from("call_logs").select("*")
+          .eq("matched_customer_id", customerId).order("received_at", { ascending: true }),
+      ]);
       if (!active) return;
+
+      const reports = reportsRes.error ? [] : reportsRes.data || [];
+      const reportCallIds = new Set(reports.map((r) => r.call_id).filter(Boolean));
+
       const merged = [
-        ...(reportsError ? [] : (reportsData || []).map((r) => ({ ...r, _kind: "report" }))),
-        ...(messagesError ? [] : (messagesData || []).map((m) => ({ ...m, _kind: "message" }))),
+        ...reports.map((r) => ({ ...r, _kind: "report" })),
+        ...(messagesRes.error ? [] : (messagesRes.data || []).map((m) => ({ ...m, _kind: "message" }))),
+        // تماس‌هایی که فایل صوت دارند و گزارششان ثبت نشده (گزارش‌دارها خودشان صوت دارند)
+        ...(callsRes.error ? [] : (callsRes.data || [])
+          .filter((l) => !reportCallIds.has(l.call_id))
+          .map((l) => ({ ...l, _kind: "call", created_at: l.received_at }))),
       ].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      if (!active) return;
       setFeed(merged);
       setLoading(false);
     })();
@@ -151,7 +193,8 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
   useEffect(() => {
     if (!feed?.length) return;
     const withCall = feed.filter(
-      (r) => r._kind === "report" && r.call_id && r.file_id && r.file_id !== "0" && !audioUrls[r.id]
+      (r) => (r._kind === "report" || r._kind === "call") &&
+             r.call_id && r.file_id && r.file_id !== "0" && !audioUrls[aKey(r)]
     );
     if (!withCall.length) return;
 
@@ -164,7 +207,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
       } = await supabase.auth.getSession();
 
       for (const r of withCall) {
-        setAudioLoading((prev) => ({ ...prev, [r.id]: true }));
+        setAudioLoading((prev) => ({ ...prev, [aKey(r)]: true }));
         try {
           const params = new URLSearchParams({
             cuid: r.call_id,
@@ -181,7 +224,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
           const blob = await res.blob();
           const objUrl = URL.createObjectURL(blob);
           createdUrls.push(objUrl);
-          if (!cancelled) setAudioUrls((prev) => ({ ...prev, [r.id]: objUrl }));
+          if (!cancelled) setAudioUrls((prev) => ({ ...prev, [aKey(r)]: objUrl }));
         } catch {
           /* بی‌صدا رد می‌شیم */
         } finally {
@@ -485,12 +528,12 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
 
                   {item.call_id && item.file_id && item.file_id !== "0" && (
                     <div className="mt-2">
-                      {audioUrls[item.id] ? (
+                      {audioUrls[aKey(item)] ? (
                         <audio controls className="w-full h-9 rounded-lg">
-                          <source src={audioUrls[item.id]} type="audio/mpeg" />
+                          <source src={audioUrls[aKey(item)]} type="audio/mpeg" />
                           مرورگر شما از پخش صوت پشتیبانی نمی‌کند.
                         </audio>
-                      ) : audioLoading[item.id] ? (
+                      ) : audioLoading[aKey(item)] ? (
                         <div className="flex items-center gap-2 text-xs text-emerald-800/70">
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           در حال دریافت فایل صوتی…

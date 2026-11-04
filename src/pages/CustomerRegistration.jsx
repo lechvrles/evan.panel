@@ -21,6 +21,11 @@ const PERSIAN_NAME_REGEX = /^[\u0600-\u06FF\s\u200C]+$/;
 // فقط حروف/عدد انگلیسی و کاراکترهای مجاز ایمیل
 const EMAIL_CHARS_REGEX = /[^a-zA-Z0-9@._%+-]/g;
 const EMAIL_FORMAT_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+const { data, error: insertError } = await supabase
+  .from("customers").insert([form]).select("id").single();
+if (insertError) throw insertError;
+setSuccess(true);
+setTimeout(() => navigate(`/customers/${data.id}`), 1400);
 
 const stripToPersian = (value) => value.replace(/[^\u0600-\u06FF\s\u200C]/g, "");
 const stripToDigits = (value) => value.replace(/\D/g, "").slice(0, 11);

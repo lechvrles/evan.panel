@@ -89,6 +89,7 @@ export default function CustomerEdit() {
       setSaving(false);
     }
   };
+  updates.phone2 = (updates.phone2 || "").trim() || null;
 
   if (loading) {
     return (
@@ -194,6 +195,9 @@ export default function CustomerEdit() {
             </Field>
             <Field label="شماره تلفن" required icon={Phone}>
               <Input value={form.phone} onChange={set("phone")} required className="h-11 pr-10" placeholder="شماره تلفن" />
+            </Field>
+            <Field label="شماره تلفن دوم" icon={Phone}>
+              <Input value={form.phone2 || ""} onChange={set("phone2")} className="h-11 pr-10" placeholder="شماره تلفن دوم" />
             </Field>
             <Field label="سمت شغلی در پروژه" icon={Briefcase}>
               <Input value={form.title || ""} onChange={set("title")} className="h-11 pr-10" placeholder="سمت" />

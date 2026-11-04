@@ -153,6 +153,7 @@ export default function CustomerDetail() {
             </div>
             <div className="px-6 py-4">
               <InfoRow icon={Phone} label="شماره تلفن" value={customer.phone} />
+              {customer.phone2 && <InfoRow icon={Phone} label="شماره تلفن دوم" value={customer.phone2} />}
               <InfoRow icon={Mail} label="ایمیل" value={customer.email} />
               <InfoRow icon={FolderKanban} label="نام پروژه" value={customer.project_name} />
               <InfoRow icon={MapPin} label="موقعیت پروژه" value={customer.project_location} />

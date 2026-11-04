@@ -29,11 +29,12 @@ export default async function handler(req, res) {
     const customerPhone = type === "incoming" ? num(call_source) : num(call_dest);
 
     let matchedCustomerId = null;
-    if (customerPhone) {
+    const tail = last10(customerPhone);
+    if (tail.length === 10) {
       const { data: match } = await admin
         .from("customers")
         .select("id")
-        .ilike("phone", `%${last10(customerPhone)}`)
+        .or(`phone.ilike.%${tail},phone2.ilike.%${tail}`)
         .limit(1)
         .maybeSingle();
       matchedCustomerId = match?.id || null;

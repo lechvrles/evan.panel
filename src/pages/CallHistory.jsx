@@ -14,6 +14,7 @@ import {
   StickyNote,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import AttachPhoneDialog from "@/components/crm/AttachPhoneDialog";
 
 const STATUS_LABELS = {
   ANSWERED: { label: "پاسخ داده شد", cls: "bg-emerald-50 text-emerald-700" },
@@ -27,6 +28,9 @@ const STATUS_LABELS = {
   requested: { label: "ثبت شده", cls: "bg-accent text-muted-foreground" },
   failed: { label: "ناموفق", cls: "bg-destructive/10 text-destructive" },
 };
+
+const [attachPhone, setAttachPhone] = useState(null);
+const [reloadKey, setReloadKey] = useState(0);
 
 const KIND_ICON = { incoming: PhoneIncoming, outgoing: PhoneOutgoing, local: PhoneMissed };
 
@@ -119,7 +123,7 @@ function AudioCell({ row }) {
     () => () => {
       if (urlRef.current) URL.revokeObjectURL(urlRef.current);
     },
-    []
+    [reloadKey]
   );
 
   const hasAudio = row.call_id && row.file_id && row.file_id !== "0";
@@ -238,11 +242,6 @@ export default function CallHistory() {
       active = false;
     };
   }, []);
-
-  const goToRegisterWithPhone = (e, phone) => {
-    e.stopPropagation();
-    navigate("/customers/register", { state: { phone } });
-  };
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -363,9 +362,12 @@ export default function CallHistory() {
                           {!row.matched_customer_id && customerNumber && (
                             <button
                               type="button"
-                              onClick={(e) => goToRegisterWithPhone(e, customerNumber)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setAttachPhone(customerNumber);
+                              }}
                               className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-full border border-border hover:bg-accent active:scale-95 transition-all whitespace-nowrap"
-                              title="افزودن به‌عنوان مشتری جدید"
+                              title="افزودن مشتری"
                             >
                               <UserPlus className="w-3.5 h-3.5" />
                               افزودن مشتری
@@ -396,6 +398,12 @@ export default function CallHistory() {
           </div>
         )}
       </div>
+      <AttachPhoneDialog
+        open={!!attachPhone}
+        phone={attachPhone}
+        onClose={() => setAttachPhone(null)}
+        onDone={() => setReloadKey((k) => k + 1)}
+      />
     </div>
   );
 }
