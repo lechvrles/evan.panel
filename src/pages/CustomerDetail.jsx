@@ -172,7 +172,6 @@ export default function CustomerDetail() {
               )}
             </div>
           </div>
-          <CustomerTasks customerId={id} customerName={fullName} />
         </div>
 
         {/* ستون اصلی — تاریخچه تماس‌ها (چت‌مانند) */}
