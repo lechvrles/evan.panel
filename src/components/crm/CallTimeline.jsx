@@ -164,11 +164,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
     let active = true;
     setLoading(true);
     (async () => {
-      const [
-        { data: reportsData, error: reportsError },
-        { data: messagesData, error: messagesError },
-        { data: tasksData, error: tasksError },
-      ] = await Promise.all([
+      const [reportsRes, messagesRes, callsRes, tasksRes] = await Promise.all([
         supabase
           .from("call_reports")
           .select("*, employees(full_name, position)")
@@ -180,12 +176,16 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
           .eq("customer_id", customerId)
           .order("created_at", { ascending: true }),
         supabase
+          .from("call_logs")
+          .select("*")
+          .eq("matched_customer_id", customerId)
+          .order("received_at", { ascending: true }),
+        supabase
           .from("tasks")
           .select("*, creator:created_by(full_name, position), assignee:assignee_id(full_name)")
           .eq("customer_id", customerId)
           .order("created_at", { ascending: true }),
       ]);
-      if (!active) return;
       const reports = reportsRes.error ? [] : reportsRes.data || [];
       const reportCallIds = new Set(reports.map((r) => r.call_id).filter(Boolean));
 
