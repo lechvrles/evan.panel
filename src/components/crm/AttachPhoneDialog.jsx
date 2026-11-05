@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Loader2, Search, User as UserIcon, X } from "lucide-react";
+import { Loader2, Search, User as UserIcon, UserPlus, X } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 
-const navigate = useNavigate();
 const toLocal = (raw) => {
   const d = String(raw || "").replace(/\D/g, "");
   return d.length >= 10 ? `0${d.slice(-10)}` : d;
@@ -17,6 +16,8 @@ export default function AttachPhoneDialog({ open, onClose, phone, onDone }) {
   const [savingId, setSavingId] = useState(null);
   const [error, setError] = useState("");
   const local = toLocal(phone);
+  const navigate = useNavigate();
+
 
   useEffect(() => {
     if (open) { setQuery(""); setResults([]); setError(""); }
@@ -65,7 +66,7 @@ export default function AttachPhoneDialog({ open, onClose, phone, onDone }) {
         </div>
         <div className="px-6 py-5 space-y-3">
           <p className="text-sm text-muted-foreground">
-            شماره <span dir="ltr" className="font-medium text-foreground">{local}</span>را به یک مشتری قبلی اضافه کنید یا مشتری جدید ثبت کنید{""}.
+            شماره <span dir="ltr" className="font-medium text-foreground">{local}</span>{" "}را به یک مشتری قبلی اضافه کنید یا مشتری جدید ثبت کنید.
           </p>
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

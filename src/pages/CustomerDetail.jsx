@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 import CallTimeline from "@/components/crm/CallTimeline";
 import CallReportPanel from "@/components/crm/CallReportPanel";
 import CustomerTags from "@/components/crm/CustomerTags";
-import CustomerTasks from "@/components/crm/CustomerTasks";
+import TaskCreatePanel from "@/components/crm/TaskCreatePanel";
 
 export default function CustomerDetail() {
   const { id } = useParams();
@@ -32,6 +32,7 @@ export default function CustomerDetail() {
   const [notFound, setNotFound] = useState(false);
 
   const [reportOpen, setReportOpen] = useState(false);
+    const [taskOpen, setTaskOpen] = useState(false);
   const [reportAutoStartIso, setReportAutoStartIso] = useState(null);
   const [reportInitialAudio, setReportInitialAudio] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -181,6 +182,7 @@ export default function CustomerDetail() {
             customerName={fullName}
             refreshKey={refreshKey}
             onAddReport={(startTs) => openReport(startTs)}
+            onAddTask={() => setTaskOpen(true)}
           />
         </div>
       </div>
@@ -192,6 +194,13 @@ export default function CustomerDetail() {
         customerId={id}
         customerName={fullName}
         autoStartIso={reportAutoStartIso}
+      />
+      <TaskCreatePanel
+        open={taskOpen}
+        onClose={() => setTaskOpen(false)}
+        onSaved={() => setRefreshKey((k) => k + 1)}
+        customerId={id}
+        customerName={fullName}
       />
     </div>
   );

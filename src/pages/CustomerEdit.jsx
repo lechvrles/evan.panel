@@ -77,6 +77,7 @@ export default function CustomerEdit() {
     setSaving(true);
     try {
       const { id: _omit, created_at: _omit2, ...updates } = form;
+      updates.phone2 = (updates.phone2 || "").trim() || null;
       const { error: updateError } = await supabase
         .from("customers")
         .update(updates)
@@ -89,7 +90,6 @@ export default function CustomerEdit() {
       setSaving(false);
     }
   };
-  updates.phone2 = (updates.phone2 || "").trim() || null;
 
   if (loading) {
     return (

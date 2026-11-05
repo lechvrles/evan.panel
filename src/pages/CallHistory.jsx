@@ -29,9 +29,6 @@ const STATUS_LABELS = {
   failed: { label: "ناموفق", cls: "bg-destructive/10 text-destructive" },
 };
 
-const [attachPhone, setAttachPhone] = useState(null);
-const [reloadKey, setReloadKey] = useState(0);
-
 const KIND_ICON = { incoming: PhoneIncoming, outgoing: PhoneOutgoing, local: PhoneMissed };
 
 const num = (v) => {
@@ -123,7 +120,7 @@ function AudioCell({ row }) {
     () => () => {
       if (urlRef.current) URL.revokeObjectURL(urlRef.current);
     },
-    [reloadKey]
+    []
   );
 
   const hasAudio = row.call_id && row.file_id && row.file_id !== "0";
@@ -184,6 +181,8 @@ export default function CallHistory() {
   const [employeesById, setEmployeesById] = useState({});
   const [notesByCallId, setNotesByCallId] = useState({});
   const [loading, setLoading] = useState(true);
+  const [attachPhone, setAttachPhone] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -375,7 +374,12 @@ export default function CallHistory() {
                           )}
                         </div>
                       </td>
-
+                      <AttachPhoneDialog
+                        open={!!attachPhone}
+                        phone={attachPhone}
+                        onClose={() => setAttachPhone(null)}
+                        onDone={() => setReloadKey((k) => k + 1)}
+                      />
                       {/* یادداشت */}
                       <td className="px-4 py-3 max-w-[240px]">
                         {note ? (
@@ -391,6 +395,7 @@ export default function CallHistory() {
                         )}
                       </td>
                     </tr>
+
                   );
                 })}
               </tbody>
@@ -398,12 +403,6 @@ export default function CallHistory() {
           </div>
         )}
       </div>
-      <AttachPhoneDialog
-        open={!!attachPhone}
-        phone={attachPhone}
-        onClose={() => setAttachPhone(null)}
-        onDone={() => setReloadKey((k) => k + 1)}
-      />
     </div>
   );
 }

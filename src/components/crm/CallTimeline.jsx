@@ -12,10 +12,14 @@ import {
   X,
   Filter,
   Check,
+  PhoneIncoming,
+  PhoneOutgoing,
+  ListTodo,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ..., PhoneIncoming, PhoneOutgoing } from "lucide-react";
+import { formatJalali } from "./JalaliDatePicker";
 
 const aKey = (r) => `${r._kind}-${r.id}`; // جلوگیری از تداخل id گزارش و لاگ
 
@@ -61,6 +65,7 @@ const MAX_FILE_MB = 15;
 const TYPE_FILTERS = [
   { id: "all", label: "همه" },
   { id: "reports", label: "گزارش تماس" },
+  { id: "tasks", label: "وظایف" },
   { id: "files", label: "فایل‌ها" },
 ];
 
@@ -107,7 +112,7 @@ function formatTime(iso) {
   }).format(new Date(iso));
 }
 
-export default function CallTimeline({ customerId, customerName, refreshKey, onAddReport }) {
+export default function CallTimeline({ customerId, customerName, refreshKey, onAddReport, onAddTask }) {
   const { employee } = useAuth();
   const [feed, setFeed] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -159,14 +164,40 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
     let active = true;
     setLoading(true);
     (async () => {
-      const [reportsRes, messagesRes, callsRes] = await Promise.all([
-        supabase.from("call_reports").select("*, employees(full_name, position)")
-          .eq("customer_id", customerId).order("created_at", { ascending: true }),
-        supabase.from("customer_messages").select("*, employees(full_name, position)")
-          .eq("customer_id", customerId).order("created_at", { ascending: true }),
-        supabase.from("call_logs").select("*")
-          .eq("matched_customer_id", customerId).order("received_at", { ascending: true }),
+      const [
+        { data: reportsData, error: reportsError },
+        { data: messagesData, error: messagesError },
+        { data: tasksData, error: tasksError },
+      ] = await Promise.all([
+        supabase
+          .from("call_reports")
+          .select("*, employees(full_name, position)")
+          .eq("customer_id", customerId)
+          .order("created_at", { ascending: true }),
+        supabase
+          .from("customer_messages")
+          .select("*, employees(full_name, position)")
+          .eq("customer_id", customerId)
+          .order("created_at", { ascending: true }),
+        supabase
+          .from("tasks")
+          .select("*, creator:created_by(full_name, position), assignee:assignee_id(full_name)")
+          .eq("customer_id", customerId)
+          .order("created_at", { ascending: true }),
       ]);
+      if (!active) return;
+      const merged = [
+        ...(reportsError ? [] : (reportsData || []).map((r) => ({ ...r, _kind: "report" }))),
+        ...(messagesError ? [] : (messagesData || []).map((m) => ({ ...m, _kind: "message" }))),
+        ...(tasksError
+          ? []
+          : (tasksData || []).map((t) => ({
+              ...t,
+              _kind: "task",
+              employee_id: t.created_by,
+              employees: t.creator,
+            }))),
+      ].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
       if (!active) return;
 
       const reports = reportsRes.error ? [] : reportsRes.data || [];
@@ -218,7 +249,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
             headers: { Authorization: `Bearer ${session?.access_token}` },
           });
           if (!res.ok || cancelled) {
-            setAudioLoading((prev) => ({ ...prev, [r.id]: false }));
+            setAudioLoading((prev) => ({ ...prev, [r]: false }));
             continue;
           }
           const blob = await res.blob();
@@ -275,6 +306,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
   const visibleFeed = (feed || []).filter((item) => {
     if (personFilter !== "all" && item.employee_id !== personFilter) return false;
     if (typeFilter === "reports") return item._kind === "report";
+    if (typeFilter === "tasks") return item._kind === "task";
     if (typeFilter === "files") return item._kind === "message" && !!item.file_path;
     return true;
   });
@@ -356,6 +388,26 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
     } finally {
       setSending(false);
     }
+  };
+
+  const toggleTask = async (task) => {
+    const done = task.status !== "done";
+    const patch = {
+      status: done ? "done" : "open",
+      completed_at: done ? new Date().toISOString() : null,
+    };
+    const { error: err } = await supabase.from("tasks").update(patch).eq("id", task.id);
+    if (!err) {
+      setFeed((prev) =>
+        prev.map((i) => (i._kind === "task" && i.id === task.id ? { ...i, ...patch } : i))
+      );
+    }
+  };
+
+  const deleteTask = async (task) => {
+    if (!window.confirm(`وظیفهٔ «${task.subject}» حذف شود؟`)) return;
+    const { error: err } = await supabase.from("tasks").delete().eq("id", task.id);
+    if (!err) setFeed((prev) => prev.filter((i) => !(i._kind === "task" && i.id === task.id)));
   };
 
   return (
@@ -503,7 +555,6 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
                     {formatTime(item.created_at)}
                   </span>
                 </div>
-
                 {/* Middle section: Subject and report */}
                 <div className="mb-2">
                   {item.subject && (
@@ -543,7 +594,14 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
                   )}
                 </div>
               </div>
-            ) : (
+              ) : item._kind === "task" ? (
+                <TaskBubble
+                  item={item}
+                  canDelete={employee?.role === "admin" || item.created_by === employee?.id}
+                  onToggle={toggleTask}
+                  onDelete={deleteTask}
+                />
+              ) : (
               <div
                 key={`msg-${item.id}`}
                 className="max-w-[85%] mr-auto rounded-2xl rounded-tr-sm bg-accent/70 border border-border px-4 py-3 shadow-sm"
@@ -627,7 +685,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
             <Paperclip className="w-4 h-4" />
           </button>
 
-          <div className="relative w-2/3 min-w-0">
+          <div className="relative flex-1 min-w-0">
             <input
               type="text"
               value={messageText}
@@ -654,6 +712,15 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
 
           <button
             type="button"
+            onClick={() => onAddTask?.()}
+            className="w-9 h-9 rounded-full bg-amber-600 text-white grid place-items-center hover:opacity-90 active:scale-95 transition-all shrink-0"
+            aria-label="ایجاد وظیفه"
+            title="ایجاد وظیفه"
+          >
+            <ListTodo className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
             onClick={() => onAddReport(new Date().toISOString())}
             className="w-9 h-9 rounded-full bg-emerald-600 text-white grid place-items-center hover:opacity-90 active:scale-95 transition-all shrink-0"
             aria-label="ثبت گزارش تماس"
@@ -662,6 +729,78 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
             <ClipboardEdit className="w-4 h-4" />
           </button>
         </form>
+      </div>
+    </div>
+  );
+}
+function TaskBubble({ item, canDelete, onToggle, onDelete }) {
+  const done = item.status === "done";
+  const overdue = !done && item.due_date && new Date(item.due_date) < new Date();
+
+  return (
+    <div className="max-w-[85%] mr-auto rounded-2xl rounded-tr-sm bg-amber-50/90 border border-amber-200/70 px-4 py-3.5 shadow-sm">
+      <div className="flex items-center justify-between gap-3 text-xs font-semibold text-amber-900 mb-2 border-b border-amber-200/50 pb-1.5">
+        <span className="flex items-center gap-1.5 shrink-0">
+          <ListTodo className="w-3.5 h-3.5 text-amber-700" />
+          {item.employees?.full_name && <span>{item.employees.full_name}</span>}
+          <span className="font-normal text-amber-800/80">· وظیفه</span>
+        </span>
+        <span className="text-amber-800/80 font-normal shrink-0">
+          {formatTime(item.created_at)}
+        </span>
+      </div>
+
+      <div className="flex items-start gap-2.5">
+        <button
+          type="button"
+          onClick={() => onToggle(item)}
+          aria-label={done ? "بازگرداندن وظیفه" : "انجام شد"}
+          className={cn(
+            "mt-0.5 w-5 h-5 rounded-full border grid place-items-center shrink-0 transition-colors",
+            done
+              ? "bg-emerald-500 border-emerald-500 text-white"
+              : "border-amber-400 hover:bg-amber-100"
+          )}
+        >
+          {done && <Check className="w-3 h-3" />}
+        </button>
+        <div className="min-w-0 flex-1">
+          <p
+            className={cn(
+              "text-sm font-medium text-amber-950 break-words",
+              done && "line-through text-muted-foreground"
+            )}
+          >
+            {item.subject}
+          </p>
+          {item.note && (
+            <p className="text-sm text-foreground/80 whitespace-pre-wrap break-words mt-1">
+              {item.note}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-2 pt-2 border-t border-amber-200/60 flex flex-wrap items-center justify-between gap-2 text-xs text-amber-800/80">
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span>مسئول: {item.assignee?.full_name || "—"}</span>
+          {item.due_date && (
+            <span className={cn(overdue && "text-destructive font-medium")}>
+              مهلت: {formatJalali(new Date(item.due_date))}
+              {overdue && " (گذشته)"}
+            </span>
+          )}
+        </span>
+        {canDelete && (
+          <button
+            type="button"
+            onClick={() => onDelete(item)}
+            aria-label="حذف وظیفه"
+            className="w-6 h-6 rounded-md grid place-items-center text-amber-800/70 hover:bg-destructive/10 hover:text-destructive transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
     </div>
   );
