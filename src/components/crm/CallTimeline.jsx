@@ -186,32 +186,24 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
           .order("created_at", { ascending: true }),
       ]);
       if (!active) return;
-      const merged = [
-        ...(reportsError ? [] : (reportsData || []).map((r) => ({ ...r, _kind: "report" }))),
-        ...(messagesError ? [] : (messagesData || []).map((m) => ({ ...m, _kind: "message" }))),
-        ...(tasksError
-          ? []
-          : (tasksData || []).map((t) => ({
-              ...t,
-              _kind: "task",
-              employee_id: t.created_by,
-              employees: t.creator,
-            }))),
-      ].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-      if (!active) return;
-
       const reports = reportsRes.error ? [] : reportsRes.data || [];
       const reportCallIds = new Set(reports.map((r) => r.call_id).filter(Boolean));
 
       const merged = [
         ...reports.map((r) => ({ ...r, _kind: "report" })),
         ...(messagesRes.error ? [] : (messagesRes.data || []).map((m) => ({ ...m, _kind: "message" }))),
-        // تماس‌هایی که فایل صوت دارند و گزارششان ثبت نشده (گزارش‌دارها خودشان صوت دارند)
+        ...(tasksRes.error
+            ? []
+            : (tasksRes.data || []).map((t) => ({
+                ...t,
+                _kind: "task",
+                employee_id: t.created_by,
+                employees: t.creator,
+              }))),
         ...(callsRes.error ? [] : (callsRes.data || [])
           .filter((l) => !reportCallIds.has(l.call_id))
           .map((l) => ({ ...l, _kind: "call", created_at: l.received_at }))),
-      ].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-      if (!active) return;
+      ].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
       setFeed(merged);
       setLoading(false);
     })();
