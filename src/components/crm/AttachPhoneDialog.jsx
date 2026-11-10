@@ -3,6 +3,7 @@ import { Loader2, Search, User as UserIcon, UserPlus, X } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
+import { createPortal } from "react-dom";
 
 const toLocal = (raw) => {
   const d = String(raw || "").replace(/\D/g, "");
@@ -53,7 +54,7 @@ export default function AttachPhoneDialog({ open, onClose, phone, onDone }) {
     onClose();
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-md bg-card rounded-[28px] border border-border shadow-2xl">
@@ -116,5 +117,6 @@ export default function AttachPhoneDialog({ open, onClose, phone, onDone }) {
         </div>
       </div>
     </div>
+    document.body
   );
 }

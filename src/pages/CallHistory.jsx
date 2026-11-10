@@ -374,12 +374,6 @@ export default function CallHistory() {
                           )}
                         </div>
                       </td>
-                      <AttachPhoneDialog
-                        open={!!attachPhone}
-                        phone={attachPhone}
-                        onClose={() => setAttachPhone(null)}
-                        onDone={() => setReloadKey((k) => k + 1)}
-                      />
                       {/* یادداشت */}
                       <td className="px-4 py-3 max-w-[240px]">
                         {note ? (
@@ -403,6 +397,12 @@ export default function CallHistory() {
           </div>
         )}
       </div>
+      <AttachPhoneDialog
+        open={!!attachPhone}
+        phone={attachPhone}
+        onClose={() => setAttachPhone(null)}
+        onDone={() => setReloadKey((k) => k + 1)}
+      />
     </div>
   );
 }

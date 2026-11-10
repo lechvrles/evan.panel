@@ -186,6 +186,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
           .eq("customer_id", customerId)
           .order("created_at", { ascending: true }),
       ]);
+      if (!active) return;
       const reports = reportsRes.error ? [] : reportsRes.data || [];
       const reportCallIds = new Set(reports.map((r) => r.call_id).filter(Boolean));
 
