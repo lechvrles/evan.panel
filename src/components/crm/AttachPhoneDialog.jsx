@@ -116,7 +116,7 @@ export default function AttachPhoneDialog({ open, onClose, phone, onDone }) {
           {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
       </div>
-    </div>
+    </div>,
     document.body
   );
 }
