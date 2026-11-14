@@ -93,8 +93,8 @@ export default function CustomerRegistration() {
       setError(err.message || "ثبت مشتری ناموفق بود");
     } finally {
       setSaving(false);
-    };
-
+    }
+  };
   if (success) {
     return (
       <div className="max-w-xl mx-auto py-20 text-center">
@@ -262,7 +262,6 @@ export default function CustomerRegistration() {
     </div>
   );
 }
-
 function Field({ label, required, icon: Icon, error, children }) {
   return (
     <div className="space-y-2">
