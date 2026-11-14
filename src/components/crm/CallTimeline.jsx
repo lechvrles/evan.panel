@@ -16,6 +16,8 @@ import {
   PhoneOutgoing,
   ListTodo,
   Trash2,
+  Reply,
+  Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";

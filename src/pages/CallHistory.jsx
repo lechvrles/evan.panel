@@ -240,7 +240,7 @@ export default function CallHistory() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">

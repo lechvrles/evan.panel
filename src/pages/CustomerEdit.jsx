@@ -19,6 +19,7 @@ import {
   Frown,
   ArrowRight,
   StickyNote,
+  Trash2,
 } from "lucide-react";
 export default function CustomerEdit() {
   const { employee } = useAuth();
