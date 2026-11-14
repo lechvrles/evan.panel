@@ -117,10 +117,10 @@ function AudioCell({ row }) {
   const urlRef = useRef(null);
 
   useEffect(
-    () => () => {
+    () => {
       if (urlRef.current) URL.revokeObjectURL(urlRef.current);
     },
-    [reloadKey]
+    []
   );
 
   const hasAudio = row.call_id && row.file_id && row.file_id !== "0";
