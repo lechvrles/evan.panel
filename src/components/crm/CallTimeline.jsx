@@ -132,11 +132,18 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
   const messagesRef = useRef(null);
   const contentRef = useRef(null);
   const followLatestRef = useRef(true);
+  const [replyTo, setReplyTo] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editText, setEditText] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     setFeed(null);
     setTypeFilter("all");
     setPersonFilter("all");
+    setReplyTo(null);
+    setEditingId(null);
     followLatestRef.current = true;
   }, [customerId]);
 
@@ -213,7 +220,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
     };
   }, [customerId, refreshKey, messagesRefresh]);
 
-  // پخش صوت تماس‌ها (همون منطق قبلی)
+  // پخش صوت تماس‌ها
   useEffect(() => {
     if (!feed?.length) return;
     const withCall = feed.filter(
@@ -250,7 +257,6 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
           createdUrls.push(objUrl);
           if (!cancelled) setAudioUrls((prev) => ({ ...prev, [aKey(r)]: objUrl }));
         } catch {
-          /* بی‌صدا رد می‌شیم */
         } finally {
           setAudioLoading((prev) => ({ ...prev, [r.id]: false }));
         }
@@ -364,6 +370,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
         {
           customer_id: customerId,
           employee_id: employee?.id || null,
+          reply_to_id: replyTo?.id || null,
           message: messageText.trim(),
           file_path,
           file_name,
@@ -373,6 +380,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
       if (insertError) throw insertError;
 
       setMessageText("");
+      setReplyTo(null);
       clearPendingFile();
       followLatestRef.current = true;
       setMessagesRefresh((k) => k + 1);
@@ -401,6 +409,45 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
     if (!window.confirm(`وظیفهٔ «${task.subject}» حذف شود؟`)) return;
     const { error: err } = await supabase.from("tasks").delete().eq("id", task.id);
     if (!err) setFeed((prev) => prev.filter((i) => !(i._kind === "task" && i.id === task.id)));
+  };
+
+  const startReply = (m) => {
+    setEditingId(null);
+    setReplyTo(m);
+    inputRef.current?.focus();
+  };
+  const startEdit = (m) => {
+    setReplyTo(null);
+    setEditingId(m.id);
+    setEditText(m.message || "");
+  };
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditText("");
+  };
+  const saveEdit = async (m) => {
+    const text = editText.trim();
+    if (!text && !m.file_path) return;
+    if (text === (m.message || "")) return cancelEdit();
+    setSavingEdit(true);
+    const patch = { message: text, edited_at: new Date().toISOString() };
+    const { error: err } = await supabase
+      .from("customer_messages")
+      .update(patch)
+      .eq("id", m.id);
+    setSavingEdit(false);
+    if (err) {
+      setSendError(err.message || "ویرایش پیام ناموفق بود");
+      return;
+    }
+    setFeed((prev) =>
+      prev.map((i) => (i._kind === "message" && i.id === m.id ? { ...i, ...patch } : i))
+    );
+    cancelEdit();
+  };
+  const jumpTo = (id) => {
+    followLatestRef.current = false;
+    document.getElementById(`msg-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
   return (
@@ -594,48 +641,32 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
                   onToggle={toggleTask}
                   onDelete={deleteTask}
                 />
-              ) : (
-              <div
-                key={`msg-${item.id}`}
-                className="max-w-[85%] mr-auto rounded-2xl rounded-tr-sm bg-accent/70 border border-border px-4 py-3 shadow-sm"
-              >
-                <div className="flex items-center justify-between gap-3 text-xs font-semibold mb-1">
-                  <span className={colorForLabel(item.employees?.position || item.employees?.full_name)}>
-                    {item.employees?.full_name || "کارمند"}
-                  </span>
-                  <span className="text-muted-foreground font-normal shrink-0">
-                    {formatTime(item.created_at)}
-                  </span>
-                </div>
-
-                {item.message && (
-                  <p className="text-sm text-foreground/90 whitespace-pre-wrap">{item.message}</p>
-                )}
-
-                {item.file_path && (
-                  <div className="mt-2">
-                    {item.file_type?.startsWith("image/") && fileUrls[item.id] ? (
-                      <a href={fileUrls[item.id]} target="_blank" rel="noreferrer">
-                        <img
-                          src={fileUrls[item.id]}
-                          alt={item.file_name}
-                          className="max-h-48 rounded-lg border border-border"
-                        />
-                      </a>
-                    ) : (
-                    <a
-                      href={fileUrls[item.id] || "#"}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-2 text-xs bg-card border border-border rounded-lg px-3 py-2 hover:bg-accent transition-colors"
-                      >
-                        <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
-                        <span className="truncate">{item.file_name || "فایل ضمیمه"}</span>
-                      </a>
-                    )}
-                  </div>
-                )}
-              </div>
+                ) : item._kind === "call" ? (
+                  <CallLogBubble
+                    item={item}
+                    audioUrl={audioUrls[aKey(item)]}
+                    audioLoading={audioLoading[aKey(item)]}
+                  />
+                ) : (
+                  <MessageBubble
+                    item={item}
+                    replied={
+                      item.reply_to_id
+                        ? feed.find((f) => f._kind === "message" && f.id === item.reply_to_id)
+                        : null
+                    }
+                    fileUrl={fileUrls[item.id]}
+                    isOwn={item.employee_id === employee?.id}
+                    isEditing={editingId === item.id}
+                    editText={editText}
+                    setEditText={setEditText}
+                    savingEdit={savingEdit}
+                    onReply={startReply}
+                    onStartEdit={startEdit}
+                    onCancelEdit={cancelEdit}
+                    onSaveEdit={saveEdit}
+                    onJump={jumpTo}
+                  />
             )}
             </React.Fragment>
           ))
@@ -645,6 +676,20 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
 
       {/* نوار ارسال پیام / فایل / گزارش تماس */}
       <div className="border-t border-border px-3 sm:px-4 py-3 space-y-2 shrink-0">
+        {replyTo && (
+          <div className="flex items-center gap-2 text-xs bg-accent/60 rounded-lg px-3 py-1.5 border-r-2 border-primary">
+            <Reply className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold truncate">{replyTo.employees?.full_name || "کارمند"}</p>
+              <p className="truncate text-muted-foreground">
+                {replyTo.message || replyTo.file_name || "فایل ضمیمه"}
+              </p>
+            </div>
+            <button type="button" onClick={() => setReplyTo(null)} className="text-muted-foreground hover:text-foreground">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
         {pendingFile && (
           <div className="flex items-center gap-2 text-xs bg-accent/60 rounded-lg px-3 py-1.5 w-fit">
             <FileText className="w-3.5 h-3.5 text-muted-foreground" />
@@ -682,6 +727,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
             <input
               type="text"
               value={messageText}
+              ref={inputRef}
               onChange={(e) => setMessageText(e.target.value)}
               placeholder="پیام بنویسید…"
               className="w-full h-10 rounded-full bg-accent/40 border border-transparent focus:border-ring focus:outline-none pr-4 pl-10 text-sm"
@@ -795,6 +841,117 @@ function TaskBubble({ item, canDelete, onToggle, onDelete }) {
           </button>
         )}
       </div>
+    </div>
+  );
+}
+function MessageBubble({
+  item, replied, fileUrl, isOwn, isEditing, editText, setEditText, savingEdit,
+  onReply, onStartEdit, onCancelEdit, onSaveEdit, onJump,
+}) {
+  return (
+    <div
+      id={`msg-${item.id}`}
+      className="group max-w-[85%] mr-auto rounded-2xl rounded-tr-sm bg-accent/70 border border-border px-4 py-3 shadow-sm"
+    >
+      <div className="flex items-center justify-between gap-3 text-xs font-semibold mb-1">
+        <span className={colorForLabel(item.employees?.position || item.employees?.full_name)}>
+          {item.employees?.full_name || "کارمند"}
+        </span>
+        <span className="flex items-center gap-1.5 text-muted-foreground font-normal shrink-0">
+          {!isEditing && (
+            <span className="flex items-center gap-0.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+              <button
+                type="button"
+                onClick={() => onReply(item)}
+                aria-label="ریپلای"
+                title="ریپلای"
+                className="w-6 h-6 rounded-md grid place-items-center hover:bg-card hover:text-foreground"
+              >
+                <Reply className="w-3.5 h-3.5" />
+              </button>
+              {isOwn && (
+                <button
+                  type="button"
+                  onClick={() => onStartEdit(item)}
+                  aria-label="ویرایش پیام"
+                  title="ویرایش پیام"
+                  className="w-6 h-6 rounded-md grid place-items-center hover:bg-card hover:text-foreground"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </span>
+          )}
+          {formatTime(item.created_at)}
+        </span>
+      </div>
+
+      {replied && (
+        <button
+          type="button"
+          onClick={() => onJump(replied.id)}
+          className="mb-2 block w-full text-right rounded-lg bg-card/70 border-r-2 border-primary px-2.5 py-1.5 hover:bg-card transition-colors"
+        >
+          <p className="text-[11px] font-semibold truncate">
+            {replied.employees?.full_name || "کارمند"}
+          </p>
+          <p className="text-xs text-muted-foreground line-clamp-2">
+            {replied.message || replied.file_name || "فایل ضمیمه"}
+          </p>
+        </button>
+      )}
+
+      {isEditing ? (
+        <div className="space-y-2">
+          <textarea
+            value={editText}
+            onChange={(e) => setEditText(e.target.value)}
+            rows={3}
+            autoFocus
+            className="flex w-full rounded-lg border border-input bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          />
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={onCancelEdit} disabled={savingEdit}
+              className="text-xs px-3 h-8 rounded-full hover:bg-card">
+              انصراف
+            </button>
+            <button type="button" onClick={() => onSaveEdit(item)} disabled={savingEdit}
+              className="text-xs px-3 h-8 rounded-full bg-primary text-primary-foreground inline-flex items-center gap-1 disabled:opacity-60">
+              {savingEdit ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+              ذخیره
+            </button>
+          </div>
+        </div>
+      ) : (
+        item.message && (
+          <p className="text-sm text-foreground/90 whitespace-pre-wrap break-words">
+            {item.message}
+            {item.edited_at && (
+              <span className="text-[10px] text-muted-foreground mr-1.5">(ویرایش شده)</span>
+            )}
+          </p>
+        )
+      )}
+
+      {item.file_path && (
+        <div className="mt-2">
+          {item.file_type?.startsWith("image/") && fileUrl ? (
+            <a href={fileUrl} target="_blank" rel="noreferrer">
+              <img src={fileUrl} alt={item.file_name} className="max-h-48 rounded-lg border border-border" />
+            </a>
+          ) : (
+            <a
+              href={fileUrl || "#"}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-2 text-xs bg-card border border-border rounded-lg px-3 py-2 hover:bg-accent transition-colors"
+            >
+              <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span className="truncate">{item.file_name || "فایل ضمیمه"}</span>
+            </a>
+          )}
+        </div>
+      )}
     </div>
   );
 }

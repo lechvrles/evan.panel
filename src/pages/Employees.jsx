@@ -258,10 +258,11 @@ export default function Employees() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-sm">
+            <table className="w-full min-w-[860px] text-sm">
               <thead>
                 <tr className="bg-muted/40 text-xs text-muted-foreground">
                   <th className="px-5 py-3 text-right font-medium">کارمند</th>
+                  <th className="px-5 py-3 text-right font-medium">نام کاربری</th>
                   <th className="px-3 py-3 text-right font-medium">سمت شغلی</th>
                   <th className="px-3 py-3 text-right font-medium">داخلی</th>
                   <th className="px-3 py-3 text-center font-medium">نقش</th>
@@ -274,7 +275,7 @@ export default function Employees() {
               <tbody className="divide-y divide-border">
                 {employees.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-5 py-10 text-center text-muted-foreground">
+                    <td colSpan={7} className="px-5 py-10 text-center text-muted-foreground">
                       هنوز کارمندی ثبت نشده است.
                     </td>
                   </tr>
@@ -298,7 +299,11 @@ export default function Employees() {
                           </div>
                         </div>
                       </td>
-
+                      <td className="px-3 py-3">
+                        <span dir="ltr" className="inline-block text-xs text-muted-foreground font-mono">
+                          {emp.username ? `@${emp.username}` : "—"}
+                        </span>
+                      </td>
                       <td className="px-3 py-3">
                         <Input
                           defaultValue={emp.position || ""}

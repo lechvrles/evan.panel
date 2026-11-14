@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Image } from "@/components/ui/image";
+import { useAuth } from "@/lib/AuthContext";
 import {
   Loader2,
   Save,
@@ -20,6 +21,9 @@ import {
   StickyNote,
 } from "lucide-react";
 export default function CustomerEdit() {
+  const { employee } = useAuth();
+  const isAdmin = employee?.role === "admin";
+  const [deleting, setDeleting] = useState(false);
   const { id } = useParams();
   const navigate = useNavigate();
   const fileRef = useRef(null);
@@ -69,6 +73,34 @@ export default function CustomerEdit() {
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleDelete = async () => {
+    const name = `${form.first_name} ${form.last_name}`;
+    if (
+      !window.confirm(
+        `«${name}» همراه با همه‌ی گزارش‌ها، پیام‌ها و وظایفش حذف شود؟ این کار قابل بازگشت نیست.`
+      )
+    )
+      return;
+    setError("");
+    setDeleting(true);
+    // .select() لازم است تا اگر RLS حذف را بی‌صدا مسدود کرد، متوجه شویم
+    const { data, error: delError } = await supabase
+      .from("customers")
+      .delete()
+      .eq("id", id)
+      .select("id");
+    setDeleting(false);
+    if (delError) {
+      setError(delError.message || "حذف مشتری ناموفق بود");
+      return;
+    }
+    if (!data?.length) {
+      setError("اجازه‌ی حذف این مشتری را ندارید");
+      return;
+    }
+    navigate("/customers", { replace: true });
   };
 
   const handleSubmit = async (e) => {
@@ -252,27 +284,48 @@ export default function CustomerEdit() {
         )}
 
         <div className="flex items-center justify-end gap-3 pt-1">
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={() => navigate(`/customers/${id}`)}
-            disabled={saving}
-          >
-            انصراف
-          </Button>
-          <Button type="submit" disabled={saving || uploading} className="h-11 px-6">
-            {saving ? (
-              <>
-                <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-                در حال ذخیره…
-              </>
+          {isAdmin ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleDelete}
+                disabled={deleting || saving}
+                className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+              >
+                {deleting ? (
+                  <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4 ml-2" />
+                )}
+                حذف مشتری
+              </Button>
             ) : (
-              <>
-                <Save className="w-4 h-4 ml-2" />
-                ذخیره تغییرات
-              </>
+              <span />
             )}
-          </Button>
+
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => navigate(`/customers/${id}`)}
+              disabled={saving}
+            >
+                        انصراف
+            </Button>
+            <Button type="submit" disabled={saving || uploading} className="h-11 px-6">
+              {saving ? (
+                <>
+                 <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                            در حال ذخیره…
+                </>
+              ) : (
+                <>
+                 <Save className="w-4 h-4 ml-2" />
+                            ذخیره تغییرات
+                </>
+                )}
+            </Button>
+          </div>
         </div>
       </form>
     </div>
