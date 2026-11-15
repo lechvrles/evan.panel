@@ -31,6 +31,7 @@ const STATUS_LABELS = {
 
 const KIND_ICON = { incoming: PhoneIncoming, outgoing: PhoneOutgoing, local: PhoneMissed };
 
+
 const num = (v) => {
   if (v == null) return null;
   if (typeof v === "object") return v.number || v.num || null;
@@ -186,6 +187,8 @@ export default function CallHistory() {
   const sentinelRef = useRef(null);
   const fetchingRef = useRef(false);
   const generationRef = useRef(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
 
   const loadPage = useCallback(async (offset) => {
       if (fetchingRef.current) return;
