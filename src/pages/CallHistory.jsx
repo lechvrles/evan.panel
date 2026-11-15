@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import {
@@ -173,29 +173,37 @@ function AudioCell({ row }) {
 }
 
 const COLUMNS = ["مبدا", "مقصد", "زمان", "وضعیت", "فایل صوتی / عملیات", "یادداشت"];
-
+const PAGE_SIZE = 50;
 export default function CallHistory() {
   const navigate = useNavigate();
-  const [rows, setRows] = useState(null);
+  const [rows, setRows] = useState([]);
   const [customersById, setCustomersById] = useState({});
   const [employeesById, setEmployeesById] = useState({});
   const [notesByCallId, setNotesByCallId] = useState({});
   const [loading, setLoading] = useState(true);
   const [attachPhone, setAttachPhone] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const sentinelRef = useRef(null);
+  const fetchingRef = useRef(false);
+  const generationRef = useRef(0);
 
-  useEffect(() => {
-    let active = true;
-    (async () => {
+  const loadPage = useCallback(async (offset) => {
+      if (fetchingRef.current) return;
+      fetchingRef.current = true;
+      const gen = generationRef.current;
+      if (offset === 0) setLoading(true);
+      else setLoadingMore(true);
+
       const { data, error } = await supabase
         .from("call_logs")
         .select("*")
         .order("received_at", { ascending: false })
-        .limit(200);
+        .order("id", { ascending: false }) // ترتیب پایدار بین صفحه‌ها
+        .range(offset, offset + PAGE_SIZE - 1);
 
-      if (!active) return;
+      if (gen !== generationRef.current) return; // درخواست قدیمی
+
       const list = error ? [] : data || [];
-      setRows(list);
 
       const customerIds = [...new Set(list.map((r) => r.matched_customer_id).filter(Boolean))];
       const employeeIds = [...new Set(list.map((r) => r.employee_id).filter(Boolean))];
@@ -213,34 +221,55 @@ export default function CallHistory() {
           : Promise.resolve({ data: [] }),
       ]);
 
-      if (!active) return;
+      if (gen !== generationRef.current) return;
 
       const cMap = {};
       (customersRes.data || []).forEach((c) => {
         cMap[c.id] = `${c.first_name} ${c.last_name}`;
       });
-      setCustomersById(cMap);
-
       const eMap = {};
       (employeesRes.data || []).forEach((e) => {
         eMap[e.id] = { name: e.full_name || "اپراتور", extension: e.extension };
       });
-      setEmployeesById(eMap);
-
       const nMap = {};
       (notesRes.data || []).forEach((n) => {
         const text = [n.subject, n.report].filter(Boolean).join(" — ");
         if (!text) return;
         nMap[n.call_id] = nMap[n.call_id] ? `${nMap[n.call_id]}\n${text}` : text;
       });
-      setNotesByCallId(nMap);
 
+      setCustomersById((p) => ({ ...p, ...cMap }));
+      setEmployeesById((p) => ({ ...p, ...eMap }));
+      setNotesByCallId((p) => ({ ...p, ...nMap }));
+      setRows((prev) => (offset === 0 ? list : [...prev, ...list]));
+      setHasMore(!error && list.length === PAGE_SIZE);
       setLoading(false);
-    })();
-    return () => {
-      active = false;
-    };
-  }, [reloadKey]);
+      setLoadingMore(false);
+      fetchingRef.current = false;
+    }, []);
+
+    // بارگذاری اولیه (و بعد از تغییر reloadKey از صفر شروع می‌شود)
+    useEffect(() => {
+      generationRef.current += 1;
+      fetchingRef.current = false;
+      setRows([]);
+      setHasMore(true);
+      loadPage(0);
+    }, [reloadKey, loadPage]);
+
+    // اسکرول بی‌نهایت
+    useEffect(() => {
+      const el = sentinelRef.current;
+      if (!el || !hasMore || loading) return;
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) loadPage(rows.length);
+        },
+        { rootMargin: "400px" }
+      );
+      observer.observe(el);
+      return () => observer.disconnect();
+    }, [hasMore, loading, rows.length, loadPage]);
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -394,6 +423,15 @@ export default function CallHistory() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+        {!loading && rows.length > 0 && (
+          <div ref={sentinelRef} className="flex items-center justify-center py-4 text-muted-foreground">
+            {loadingMore ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : !hasMore ? (
+              <span className="text-xs">همه‌ی تماس‌ها نمایش داده شد.</span>
+            ) : null}
           </div>
         )}
       </div>
