@@ -3,18 +3,21 @@ import { getAdminClient, requireEmployee } from "./_admin.js";
 const BASE = "https://panel.telefonchy.com/webservice/v1";
 
 async function tryFetch(url, token) {
-  console.log("trying:", url);
   try {
     const res = await fetch(url, { headers: { "webservice-token": token } });
-    if (res.ok) {
-      console.log("SUCCESS:", url);
-      return res;
+    if (!res.ok) return null;
+    const type = res.headers.get("content-type") || "";
+    if (!/audio|octet-stream/i.test(type)) {
+      console.log("not audio:", type, url);
+      return null;
     }
-    const detail = await res.text().catch(() => "");
-    console.log("failed:", res.status, detail.slice(0, 300));
-    return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length < 1024) {
+      console.log("too small:", buf.length, url);
+      return null;
+    }
+    return { buf, type };
   } catch (e) {
-    console.log("fetch threw:", e.message);
     return null;
   }
 }

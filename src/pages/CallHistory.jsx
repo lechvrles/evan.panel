@@ -143,6 +143,7 @@ function AudioCell({ row }) {
       });
       if (!res.ok) throw new Error("failed");
       const blob = await res.blob();
+      if (!blob.size || !/audio|octet-stream/i.test(blob.type)) throw new Error("bad audio");
       const objUrl = URL.createObjectURL(blob);
       urlRef.current = objUrl;
       setUrl(objUrl);
@@ -153,7 +154,8 @@ function AudioCell({ row }) {
   };
 
   if (state === "ready") {
-    return <audio controls autoPlay src={url} className="h-8 w-52" />;
+    return <audio controls autoPlay src={url} className="h-8 w-52"
+           onError={() => setState("error")} />;
   }
 
   return (
