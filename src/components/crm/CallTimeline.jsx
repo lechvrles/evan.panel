@@ -251,7 +251,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
             headers: { Authorization: `Bearer ${session?.access_token}` },
           });
           if (!res.ok || cancelled) {
-            setAudioLoading((prev) => ({ ...prev, [r]: false }));
+            setAudioLoading((prev) => ({ ...prev, [aKey(r)]: false }));
             continue;
           }
           const blob = await res.blob();
@@ -260,7 +260,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
           if (!cancelled) setAudioUrls((prev) => ({ ...prev, [aKey(r)]: objUrl }));
         } catch {
         } finally {
-          setAudioLoading((prev) => ({ ...prev, [r.id]: false }));
+          setAudioLoading((prev) => ({ ...prev, [aKey(r)]: false }));
         }
       }
     })();

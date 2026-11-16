@@ -12,7 +12,7 @@ async function tryFetch(url, token) {
       return null;
     }
     const buf = Buffer.from(await res.arrayBuffer());
-    if (buf.length < 1024) {
+    if (buf.length < 100) {
       console.log("too small:", buf.length, url);
       return null;
     }
@@ -59,8 +59,8 @@ export default async function handler(req, res) {
         .json({ error: "هیچ فایل صوتی برای این تماس در هیچ‌کدام از مسیرها یافت نشد" });
     }
 
-    const buffer = Buffer.from(await providerRes.arrayBuffer());
-    res.setHeader("Content-Type", providerRes.headers.get("content-type") || "audio/mpeg");
+    const buffer = providerRes.buf;
+    res.setHeader("Content-Type", providerRes.type || "audio/mpeg");
     res.setHeader("Content-Length", buffer.length);
     res.setHeader("Cache-Control", "private, max-age=3600");
     return res.status(200).send(buffer);
