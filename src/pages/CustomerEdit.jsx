@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Image } from "@/components/ui/image";
 import { useAuth } from "@/lib/AuthContext";
+import CustomerAccess, { AccessSectionHeader } from "@/components/crm/CustomerAccess";
 import {
   Loader2,
   Save,
@@ -277,6 +278,16 @@ export default function CustomerEdit() {
             </Field>
           </div>
         </section>
+        {(isAdmin || form.created_by === employee?.id) && (
+          <section className="rounded-[28px] bg-card border border-border overflow-hidden shadow-sm">
+            <div className="px-6 sm:px-8 py-5 border-b border-border bg-gradient-to-bl from-accent/60 to-transparent">
+              <AccessSectionHeader />
+            </div>
+            <div className="p-6 sm:p-8">
+              <CustomerAccess customerId={id} ownerId={form.created_by} />
+            </div>
+          </section>
+        )}
 
         {error && (
           <div className="p-3 rounded-xl bg-destructive/10 text-destructive text-sm">

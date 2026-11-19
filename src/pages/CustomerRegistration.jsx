@@ -41,6 +41,7 @@ export default function CustomerRegistration() {
     notes: "",
   });
   const [fieldErrors, setFieldErrors] = useState({});
+  const [accessIds, setAccessIds] = useState([]);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
@@ -85,10 +86,19 @@ export default function CustomerRegistration() {
     }
     setSaving(true);
     try {
-      const { error: insertError } = await supabase.from("customers").insert([form]);
+      const { data: created, error: insertError } = await supabase
+        .from("customers")
+        .insert([form])
+        .select("id")
+        .single();
       if (insertError) throw insertError;
-      setSuccess(true);
-      setTimeout(() => navigate("/"), 1400);
+
+      if (accessIds.length) {
+        const { error: accessError } = await supabase
+          .from("customer_access")
+          .insert(accessIds.map((employee_id) => ({ customer_id: created.id, employee_id })));
+        if (accessError) throw accessError;
+      }
     } catch (err) {
       setError(err.message || "ثبت مشتری ناموفق بود");
     } finally {
@@ -228,7 +238,22 @@ export default function CustomerRegistration() {
             </Field>
           </div>
         </section>
-
+        <section className="rounded-[28px] bg-card border border-border overflow-hidden shadow-sm">
+          <div className="px-6 sm:px-8 pt-6 pb-5 border-b border-border bg-gradient-to-bl from-accent/60 to-transparent">
+            <AccessSectionHeader />
+          </div>
+          <div className="p-6 sm:p-8">
+            <CustomerAccess value={accessIds} onChange={setAccessIds} />
+          </div>
+        </section>
+        <section className="rounded-[28px] bg-card border border-border overflow-hidden shadow-sm">
+          <div className="px-6 sm:px-8 pt-6 pb-5 border-b border-border bg-gradient-to-bl from-accent/60 to-transparent">
+            <AccessSectionHeader />
+          </div>
+          <div className="p-6 sm:p-8">
+            <CustomerAccess value={accessIds} onChange={setAccessIds} />
+          </div>
+        </section>
         {error && (
           <div className="p-3 rounded-xl bg-destructive/10 text-destructive text-sm">
             {error}

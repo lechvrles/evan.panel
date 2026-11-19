@@ -70,7 +70,7 @@ export default function CustomerDetail() {
           <Frown className="w-10 h-10 text-muted-foreground mb-3 opacity-70" />
           <h2 className="font-heading text-lg font-semibold">مشتری یافت نشد</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            این مشتری ممکن است حذف شده باشد.
+            این مشتری حذف شده یا شما به آن دسترسی ندارید.
           </p>
           <button
             onClick={() => navigate("/customers")}

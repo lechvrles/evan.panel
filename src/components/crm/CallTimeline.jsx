@@ -69,6 +69,7 @@ const TYPE_FILTERS = [
   { id: "reports", label: "گزارش تماس" },
   { id: "tasks", label: "وظایف" },
   { id: "files", label: "فایل‌ها" },
+  { id: "activities", label: "تغییرات" },
 ];
 
 // رنگ ثابت برای هر «سمت»، تا همیشه یک رنگ ثابت به همون سمت اختصاص پیدا کنه
@@ -173,7 +174,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
     let active = true;
     setLoading(true);
     (async () => {
-      const [reportsRes, messagesRes, callsRes, tasksRes] = await Promise.all([
+      const [reportsRes, messagesRes, callsRes, tasksRes, activitiesRes] = await Promise.all([
         supabase
           .from("call_reports")
           .select("*, employees(full_name, position)")
@@ -194,6 +195,11 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
           .select("*, creator:created_by(full_name, position), assignee:assignee_id(full_name)")
           .eq("customer_id", customerId)
           .order("created_at", { ascending: true }),
+        supabase
+           .from("customer_activities")
+           .select("*, actor:actor_id(full_name, position)")
+           .eq("customer_id", customerId)
+           .order("created_at", { ascending: true }),
       ]);
       if (!active) return;
       const reports = reportsRes.error ? [] : reportsRes.data || [];
@@ -213,6 +219,12 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
         ...(callsRes.error ? [] : (callsRes.data || [])
           .filter((l) => !reportCallIds.has(l.call_id))
           .map((l) => ({ ...l, _kind: "call", created_at: l.received_at }))),
+        ...(activitiesRes.error ? [] : (activitiesRes.data || []).map((a) => ({
+          ...a,
+          _kind: "activity",
+          employee_id: a.actor_id,
+          employees: a.actor,
+        }))),
       ].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
       setFeed(merged);
       setLoading(false);
@@ -306,6 +318,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
 
   const visibleFeed = (feed || []).filter((item) => {
     if (personFilter !== "all" && item.employee_id !== personFilter) return false;
+    if (typeFilter === "activities") return item._kind === "activity";
     if (typeFilter === "reports") return item._kind === "report";
     if (typeFilter === "tasks") return item._kind === "task";
     if (typeFilter === "files") return item._kind === "message" && !!item.file_path;
@@ -580,7 +593,10 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
                   <span className="h-px flex-1 bg-border" />
                 </div>
               )}
-            {item._kind === "report" ? (
+
+              {item._kind === "activity" ? (
+                <ActivityPill item={item} />
+              ) : item._kind === "report" ? (
               <div
                 key={`report-${item.id}`}
                 className="max-w-[85%] mr-auto rounded-2xl rounded-tr-sm bg-emerald-50/90 border border-emerald-200/70 px-4 py-3.5 shadow-sm"
@@ -843,6 +859,40 @@ function TaskBubble({ item, canDelete, onToggle, onDelete }) {
           </button>
         )}
       </div>
+    </div>
+  );
+}
+function ActivityPill({ item }) {
+  const actor = <b className="text-foreground">{item.employees?.full_name || "سیستم"}</b>;
+  const d = item.details || {};
+  const fields = (d.fields || []).map((f) => FIELD_LABELS[f] || f).join("، ");
+
+  let content;
+  switch (item.action) {
+    case "customer_created":
+      content = <>{actor} مشتری را ثبت کرد</>; break;
+    case "access_revoked":
+      content = <>{actor}، دسترسی <b className="text-foreground">{d.target_name}</b> را از اطلاعات مشتری حذف کرد</>; break;
+    case "customer_updated":
+      content = <>{actor} اطلاعات مشتری را تغییر داد</>; break;
+    case "tag_added":
+      content = <>{actor} برچسب «{d.tag}» را اضافه کرد</>; break;
+    case "tag_removed":
+      content = <>{actor} برچسب «{d.tag}» را حذف کرد</>; break;
+    case "access_granted":
+      content = <>{actor}، دسترسی <b className="text-foreground">{d.target_name}</b> را به اطلاعات مشتری اضافه کرد</>; break;
+    default:
+      content = <>{actor} تغییری ثبت کرد</>;
+  }
+
+  return (
+    <div className="flex justify-center shrink-0">
+      <span
+        title={item.action === "customer_updated" && fields ? `فیلدهای تغییرکرده: ${fields}` : undefined}
+        className="rounded-full bg-muted/70 border border-border px-4 py-1 text-xs text-muted-foreground text-center"
+      >
+        {content}
+      </span>
     </div>
   );
 }
