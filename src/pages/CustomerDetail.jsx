@@ -13,9 +13,6 @@ import {
   MapPin,
   CalendarClock,
   StickyNote,
-  PhoneCall,
-  CheckCircle2,
-  XCircle,
 } from "lucide-react";
 import { Image } from "@/components/ui/image";
 import { cn } from "@/lib/utils";
@@ -23,6 +20,7 @@ import CallTimeline from "@/components/crm/CallTimeline";
 import CallReportPanel from "@/components/crm/CallReportPanel";
 import CustomerTags from "@/components/crm/CustomerTags";
 import TaskCreatePanel from "@/components/crm/TaskCreatePanel";
+import CallButton from "@/components/crm/CallButton";
 
 export default function CustomerDetail() {
   const { id } = useParams();
@@ -135,6 +133,7 @@ export default function CustomerDetail() {
 
             <CallButton
               phone={customer.phone}
+              phone2={customer.phone2}
               customerName={fullName}
               onCallSuccess={(isoStart) => openReport(isoStart)}
             />
@@ -217,82 +216,6 @@ function InfoRow({ icon: Icon, label, value }) {
         <p className="text-xs text-muted-foreground">{label}</p>
         <p className="text-sm font-medium break-words mt-0.5">{value ? value : "—"}</p>
       </div>
-    </div>
-  );
-}
-
-function CallButton({ phone, customerName, onCallSuccess }) {
-  const [status, setStatus] = useState("idle"); // idle | calling | success | error
-  const [errorMsg, setErrorMsg] = useState("");
-
-  const handleCall = async () => {
-    if (!phone || status === "calling") return;
-    setStatus("calling");
-    setErrorMsg("");
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const res = await fetch("/api/call-customer", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify({ phone }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || "برقراری تماس ناموفق بود");
-      setStatus("success");
-      onCallSuccess?.(json.created_at || new Date().toISOString());
-      setTimeout(() => setStatus("idle"), 2500);
-    } catch (err) {
-      setStatus("error");
-      setErrorMsg(err.message || "خطا در برقراری تماس");
-      setTimeout(() => setStatus("idle"), 3000);
-    }
-  };
-
-  return (
-    <div className="absolute bottom-4 left-4 flex items-center gap-2">
-      {status !== "idle" && (
-        <p className="text-xs text-muted-foreground max-w-[150px] truncate">
-          {status === "calling" && "در حال برقراری تماس…"}
-          {status === "success" && "تماس برقرار شد"}
-          {status === "error" && (errorMsg || "خطا در تماس")}
-        </p>
-      )}
-      <button
-        type="button"
-        onClick={handleCall}
-        disabled={!phone || status === "calling"}
-        className={cn(
-          "w-9 h-9 rounded-full grid place-items-center transition-all shadow-sm",
-          status === "success"
-            ? "bg-emerald-500 text-white"
-            : status === "error"
-            ? "bg-destructive text-destructive-foreground"
-            : "bg-primary text-primary-foreground hover:opacity-90 active:scale-95",
-          (!phone || status === "calling") && "opacity-60 cursor-not-allowed"
-        )}
-        aria-label={`تماس با ${customerName}`}
-        title={phone ? `تماس با ${phone}` : "شماره تلفن ثبت نشده"}
-      >
-        {status === "calling" ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : status === "success" ? (
-          <CheckCircle2 className="w-4 h-4" />
-        ) : status === "error" ? (
-          <XCircle className="w-4 h-4" />
-        ) : (
-          <PhoneCall className="w-4 h-4" />
-        )}
-      </button>
-      <p className="text-xs text-muted-foreground h-4">
-        {status === "calling" && "در حال برقراری تماس…"}
-        {status === "success" && "تماس برقرار شد"}
-        {status === "error" && (errorMsg || "خطا در تماس")}
-      </p>
     </div>
   );
 }
