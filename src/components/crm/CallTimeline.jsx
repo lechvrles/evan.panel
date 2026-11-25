@@ -72,6 +72,19 @@ const TYPE_FILTERS = [
   { id: "activities", label: "تغییرات" },
 ];
 
+const FIELD_LABELS = {
+  first_name: "نام",
+  last_name: "نام خانوادگی",
+  phone: "شماره تلفن",
+  phone2: "شماره تلفن دوم",
+  title: "سمت پروژه",
+  email: "ایمیل",
+  project_name: "نام پروژه",
+  project_location: "موقعیت پروژه",
+  notes: "یادداشت",
+  avatar_url: "تصویر",
+};
+
 // رنگ ثابت برای هر «سمت»، تا همیشه یک رنگ ثابت به همون سمت اختصاص پیدا کنه
 const NAME_COLORS = [
   "text-rose-600",
@@ -169,6 +182,12 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
     return () => observer.disconnect();
   }, []);
 
+  const createdUrlsRef = useRef([]);
+  useEffect(() => {
+    const urls = createdUrlsRef;
+    return () => urls.current.forEach((u) => URL.revokeObjectURL(u));
+  }, []);
+
   // بارگذاری ترکیبی گزارش‌های تماس و پیام‌ها، مرتب‌شده بر اساس زمان
   useEffect(() => {
     let active = true;
@@ -238,20 +257,19 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
   useEffect(() => {
     if (!feed?.length) return;
     const withCall = feed.filter(
-      (r) => (r._kind === "report" || r._kind === "call") &&
-             r.call_id && r.file_id && r.file_id !== "0" && !audioUrls[aKey(r)]
+      (r) =>
+        (r._kind === "report" || r._kind === "call") &&
+        r.call_id && r.file_id && r.file_id !== "0" && !audioUrls[aKey(r)]
     );
     if (!withCall.length) return;
 
-    let createdUrls = [];
     let cancelled = false;
 
     (async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
 
       for (const r of withCall) {
+        if (cancelled) return;
         setAudioLoading((prev) => ({ ...prev, [aKey(r)]: true }));
         try {
           const params = new URLSearchParams({
@@ -262,15 +280,13 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
           const res = await fetch(`/api/call-recording?${params.toString()}`, {
             headers: { Authorization: `Bearer ${session?.access_token}` },
           });
-          if (!res.ok || cancelled) {
-            setAudioLoading((prev) => ({ ...prev, [aKey(r)]: false }));
-            continue;
-          }
+          if (!res.ok) continue;
           const blob = await res.blob();
           const objUrl = URL.createObjectURL(blob);
-          createdUrls.push(objUrl);
-          if (!cancelled) setAudioUrls((prev) => ({ ...prev, [aKey(r)]: objUrl }));
+          createdUrlsRef.current.push(objUrl);
+          setAudioUrls((prev) => ({ ...prev, [aKey(r)]: objUrl }));
         } catch {
+          // نادیده گرفتن؛ صوت نمایش داده نمی‌شود
         } finally {
           setAudioLoading((prev) => ({ ...prev, [aKey(r)]: false }));
         }
@@ -279,7 +295,6 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
 
     return () => {
       cancelled = true;
-      createdUrls.forEach((u) => URL.revokeObjectURL(u));
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [feed]);

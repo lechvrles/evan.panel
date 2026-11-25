@@ -117,12 +117,11 @@ function AudioCell({ row }) {
   const [url, setUrl] = useState(null);
   const urlRef = useRef(null);
 
-  useEffect(
-    () => {
+  useEffect(() => {
+    return () => {
       if (urlRef.current) URL.revokeObjectURL(urlRef.current);
-    },
-    []
-  );
+    };
+  }, []);
 
   const hasAudio = row.call_id && row.file_id && row.file_id !== "0";
   if (!hasAudio) return <span className="text-xs text-muted-foreground">—</span>;

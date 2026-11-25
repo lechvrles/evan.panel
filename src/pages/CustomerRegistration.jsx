@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import CustomerAccess, { AccessSectionHeader } from "@/components/crm/CustomerAccess";
 import {
   UserPlus,
   Loader2,
@@ -97,8 +98,13 @@ export default function CustomerRegistration() {
         const { error: accessError } = await supabase
           .from("customer_access")
           .insert(accessIds.map((employee_id) => ({ customer_id: created.id, employee_id })));
-        if (accessError) throw accessError;
+        if (accessError) {
+          navigate(`/customers/${created.id}/edit`, { replace: true });
+          return;
+        }
       }
+      setSuccess(true);
+      setTimeout(() => navigate("/"), 1400);
     } catch (err) {
       setError(err.message || "ثبت مشتری ناموفق بود");
     } finally {
@@ -236,14 +242,6 @@ export default function CustomerRegistration() {
                 placeholder="یادداشت درباره‌ی مشتری"
               />
             </Field>
-          </div>
-        </section>
-        <section className="rounded-[28px] bg-card border border-border overflow-hidden shadow-sm">
-          <div className="px-6 sm:px-8 pt-6 pb-5 border-b border-border bg-gradient-to-bl from-accent/60 to-transparent">
-            <AccessSectionHeader />
-          </div>
-          <div className="p-6 sm:p-8">
-            <CustomerAccess value={accessIds} onChange={setAccessIds} />
           </div>
         </section>
         <section className="rounded-[28px] bg-card border border-border overflow-hidden shadow-sm">
