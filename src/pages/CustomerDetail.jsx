@@ -21,6 +21,7 @@ import CallReportPanel from "@/components/crm/CallReportPanel";
 import CustomerTags from "@/components/crm/CustomerTags";
 import TaskCreatePanel from "@/components/crm/TaskCreatePanel";
 import CallButton from "@/components/crm/CallButton";
+import VisitCreatePanel from "@/components/crm/VisitCreatePanel";
 
 export default function CustomerDetail() {
   const { id } = useParams();
@@ -28,9 +29,9 @@ export default function CustomerDetail() {
   const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-
+  const [visitOpen, setVisitOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-    const [taskOpen, setTaskOpen] = useState(false);
+  const [taskOpen, setTaskOpen] = useState(false);
   const [reportAutoStartIso, setReportAutoStartIso] = useState(null);
   const [reportInitialAudio, setReportInitialAudio] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -181,6 +182,7 @@ export default function CustomerDetail() {
             refreshKey={refreshKey}
             onAddReport={(startTs) => openReport(startTs)}
             onAddTask={() => setTaskOpen(true)}
+            onAddVisit={() => setVisitOpen(true)}
           />
         </div>
       </div>
@@ -199,6 +201,14 @@ export default function CustomerDetail() {
         onSaved={() => setRefreshKey((k) => k + 1)}
         customerId={id}
         customerName={fullName}
+      />
+      <VisitCreatePanel
+        open={visitOpen}
+        onClose={() => setVisitOpen(false)}
+        onSaved={() => setRefreshKey((k) => k + 1)}
+        customerId={id}
+        customerName={fullName}
+        projectName={customer.project_name}
       />
     </div>
   );
