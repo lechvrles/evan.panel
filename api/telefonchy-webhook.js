@@ -11,22 +11,37 @@ function num(v) {
   return String(v);
 }
 
+function normalize(body) {
+  const d = body && typeof body.data === "object" && body.data !== null ? body.data : {};
+  const pick = (key) => body[key] ?? d[key] ?? null;
+  return {
+    event: pick("event"),
+    call_id: pick("call_id"),
+    file_id: pick("file_id"),
+    type: pick("type"),
+    call_source: pick("call_source"),
+    call_dest: pick("call_dest"),
+    status: pick("status"),
+    time_talk: pick("time_talk"),
+    date: pick("date"),
+  };
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST" && req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    const body = { ...(req.query || {}), ...(req.body || {}) };
-    console.log("telefonchy webhook:", JSON.stringify(body));
+    const raw = { ...(req.query || {}), ...(req.body || {}) };
+    console.log("telefonchy webhook:", JSON.stringify(raw));
 
+    const p = normalize(raw);
     const admin = getAdminClient();
-    const event = body.event || null;
 
-    const call_id = body.call_id != null ? String(body.call_id) : null;
-    const file_id = body.file_id != null ? String(body.file_id) : null;
-    const { type, call_source, call_dest } = body;
-    const customerPhone = type === "incoming" ? num(call_source) : num(call_dest);
+    const call_id = p.call_id != null ? String(p.call_id) : null;
+    const file_id = p.file_id != null ? String(p.file_id) : null;
+    const customerPhone = p.type === "incoming" ? num(p.call_source) : num(p.call_dest);
 
     let matchedCustomerId = null;
     const tail = last10(customerPhone);
@@ -40,7 +55,7 @@ export default async function handler(req, res) {
       matchedCustomerId = match?.id || null;
     }
 
-    const ourNumber = type === "incoming" ? num(call_dest) : num(call_source);
+    const ourNumber = p.type === "incoming" ? num(p.call_dest) : num(p.call_source);
     let handledByEmployeeId = null;
     if (ourNumber) {
       const { data: empMatch } = await admin
@@ -51,58 +66,67 @@ export default async function handler(req, res) {
       handledByEmployeeId = empMatch?.id || null;
     }
 
-    if (event !== "recording.merged.ready") {
-      // ─── رویداد پایان تماس (معمولی) ───
-      const { error: insertError } = await admin.from("call_logs").insert([
-        {
-          phone: customerPhone || null,
-          matched_customer_id: matchedCustomerId,
-          employee_id: handledByEmployeeId,
-          call_id,
-          file_id: file_id && file_id !== "0" ? file_id : null,
-          raw_payload: body,
-        },
-      ]);
-      if (insertError) console.error("call_logs insert failed:", insertError.message);
+    let receivedAt = null;
+    if (p.date) {
+      const parsed = new Date(p.date);
+      if (!isNaN(parsed.getTime())) receivedAt = parsed.toISOString();
+    }
 
-      if (file_id && file_id !== "0" && call_id && matchedCustomerId) {
-        const { data: pending } = await admin
-          .from("call_reports")
-          .select("id")
-          .eq("customer_id", matchedCustomerId)
-          .or("file_id.is.null,call_id.is.null")
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (pending) {
-          await admin.from("call_reports").update({ file_id, call_id }).eq("id", pending.id);
-          console.log("recording ids attached to report", pending.id);
-        }
-      }
-    } else {
-      // ─── 🔧 رویداد جدید: فایل صوتی ──
+    // ✅ رویداد فایل صوتی - هم call_logs و هم call_reports را آپدیت می‌کند
+    if (p.event === "recording.merged.ready") {
       if (call_id && file_id && file_id !== "0") {
+        // آپدیت call_logs
         const { error: updateLogError } = await admin
           .from("call_logs")
-          .update({ file_id, raw_payload: body })
+          .update({ file_id, raw_payload: raw })
           .eq("call_id", call_id);
-        if (updateLogError) console.error("call_logs update (merged.ready) failed:", updateLogError.message);
+        if (updateLogError) console.error("call_logs update failed:", updateLogError.message);
 
         const { error: updateReportError } = await admin
           .from("call_reports")
           .update({ file_id })
-          .eq("call_id", call_id);
-        if (updateReportError) console.error("call_reports update (merged.ready) failed:", updateReportError.message);
+          .eq("call_id", call_id)
+          .is("file_id", null); // فقط گزارش‌هایی که file_id ندارند
 
-        console.log("final file_id applied via recording.merged.ready", call_id, file_id);
-      } else {
-        console.warn("recording.merged.ready received without valid call_id/file_id:", body);
+        if (updateReportError) {
+          console.error("call_reports update failed:", updateReportError.message);
+        } else {
+          console.log("✅ file_id applied to call_logs and call_reports:", call_id, file_id);
+        }
       }
+      return res.status(200).json({ ok: true });
+    }
+
+    if (!call_id) {
+      console.warn("webhook received without call_id:", raw);
+      return res.status(200).json({ ok: true, skipped: true });
+    }
+
+    const { error: insertError } = await admin
+      .from("call_logs")
+      .upsert(
+        [
+          {
+            phone: customerPhone || null,
+            matched_customer_id: matchedCustomerId,
+            employee_id: handledByEmployeeId,
+            call_id,
+            file_id: file_id && file_id !== "0" ? file_id : null,
+            raw_payload: raw,
+            ...(receivedAt ? { received_at: receivedAt } : {}),
+          },
+        ],
+        { onConflict: "call_id" }
+      );
+
+    if (insertError) {
+      console.error("call_logs upsert failed:", insertError.message);
+      return res.status(500).json({ ok: false, error: insertError.message });
     }
 
     return res.status(200).json({ ok: true });
   } catch (err) {
     console.error("telefonchy-webhook error:", err);
-    return res.status(500).json({ ok: false });
+    return res.status(500).json({ ok: false, error: String(err?.message || err) });
   }
 }
