@@ -251,6 +251,7 @@ export default function CallTimeline({ customerId, customerName, refreshKey, onA
           _kind: "activity",
           employee_id: a.actor_id,
           employees: a.actor,
+        }))),
         ...(visitsRes.error
           ? []
           : (visitsRes.data || []).map((v) => ({
