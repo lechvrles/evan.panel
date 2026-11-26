@@ -80,19 +80,52 @@ export default function CallReportPanel({
     try {
       const end = endUnix ?? Math.floor(Date.now() / 1000);
 
-      // گرفتن file_id و call_id از آخرین call_log همان مشتری
+      // ✅ تبدیل startTime به ISO برای تطابق با received_at
+      const startIso = startUnix ? new Date(startUnix * 1000).toISOString() : null;
+
       let fileId = null, callId = null;
-      const { data: recentLog } = await supabase
-        .from("call_logs")
-        .select("file_id, call_id")
-        .eq("matched_customer_id", customerId)
-        .not("call_id", "is", null)
-        .order("received_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (recentLog) {
-        fileId = recentLog.file_id;
-        callId = recentLog.call_id;
+
+      if (startIso) {
+        // ✅ پیدا کردن call_log در بازه ±5 دقیقه از زمان شروع
+        const startWindow = new Date(startUnix * 1000 - 5 * 60 * 1000).toISOString();
+        const endWindow = new Date(startUnix * 1000 + 5 * 60 * 1000).toISOString();
+
+        const { data: matchingLogs } = await supabase
+          .from("call_logs")
+          .select("file_id, call_id, received_at")
+          .eq("matched_customer_id", customerId)
+          .not("call_id", "is", null)
+          .gte("received_at", startWindow)
+          .lte("received_at", endWindow)
+          .order("received_at", { ascending: false })
+          .limit(5);
+
+        if (matchingLogs && matchingLogs.length > 0) {
+          // نزدیک‌ترین به زمان شروع را انتخاب کن
+          const closest = matchingLogs.reduce((prev, curr) => {
+            const prevDiff = Math.abs(new Date(prev.received_at) - new Date(startIso));
+            const currDiff = Math.abs(new Date(curr.received_at) - new Date(startIso));
+            return currDiff < prevDiff ? curr : prev;
+          });
+          fileId = closest.file_id;
+          callId = closest.call_id;
+        }
+      }
+
+      // ✅ fallback: اگر در بازه زمانی پیدا نشد، آخرین call_log را بگیر
+      if (!callId) {
+        const { data: recentLog } = await supabase
+          .from("call_logs")
+          .select("file_id, call_id")
+          .eq("matched_customer_id", customerId)
+          .not("call_id", "is", null)
+          .order("received_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (recentLog) {
+          fileId = recentLog.file_id;
+          callId = recentLog.call_id;
+        }
       }
 
       const { error: insertError } = await supabase.from("call_reports").insert([
@@ -107,6 +140,7 @@ export default function CallReportPanel({
           call_id: callId,
         },
       ]);
+
       if (insertError) throw insertError;
 
       const d = startUnix != null ? Math.max(0, end - startUnix) : null;
