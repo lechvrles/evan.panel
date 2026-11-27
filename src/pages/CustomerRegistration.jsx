@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import ReferrerPicker from "@/components/crm/ReferrerPicker";
 import CustomerAccess, { AccessSectionHeader } from "@/components/crm/CustomerAccess";
 import {
   UserPlus,
@@ -40,6 +41,8 @@ export default function CustomerRegistration() {
     project_name: "",
     project_location: "",
     notes: "",
+    referrer_customer_id: null,
+    referrer_name: null,
   });
   const [fieldErrors, setFieldErrors] = useState({});
   const [accessIds, setAccessIds] = useState([]);
@@ -242,6 +245,22 @@ export default function CustomerRegistration() {
                 placeholder="یادداشت درباره‌ی مشتری"
               />
             </Field>
+          </div>
+        </section>
+        <section className="rounded-[28px] bg-card border border-border overflow-hidden shadow-sm">
+          <div className="px-6 sm:px-8 pt-6 pb-5 border-b border-border bg-gradient-to-bl from-accent/60 to-transparent">
+            <h2 className="font-heading text-lg sm:text-xl font-semibold tracking-tight">
+              شخص معرف
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              کسی که این مشتری را معرفی کرده است (اختیاری).
+            </p>
+          </div>
+          <div className="p-6 sm:p-8">
+            <ReferrerPicker
+              value={form}
+              onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
+            />
           </div>
         </section>
         <section className="rounded-[28px] bg-card border border-border overflow-hidden shadow-sm">

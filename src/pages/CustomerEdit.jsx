@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Image } from "@/components/ui/image";
 import { useAuth } from "@/lib/AuthContext";
+import ReferrerPicker from "@/components/crm/ReferrerPicker";
 import CustomerAccess, { AccessSectionHeader } from "@/components/crm/CustomerAccess";
 import {
   Loader2,
@@ -256,6 +257,22 @@ export default function CustomerEdit() {
             <Field label="موقعیت پروژه" icon={MapPin}>
               <Input value={form.project_location || ""} onChange={set("project_location")} className="h-11 pr-10" placeholder="موقعیت پروژه" />
             </Field>
+          </div>
+        </section>
+
+    /*{شخص معرف} */
+        <section className="rounded-[28px] bg-card border border-border overflow-hidden shadow-sm">
+          <div className="px-6 sm:px-8 py-5 border-b border-border bg-gradient-to-bl from-accent/60 to-transparent">
+            <h2 className="font-heading text-lg sm:text-xl font-semibold tracking-tight">
+              شخص معرف
+            </h2>
+          </div>
+          <div className="p-6 sm:p-8">
+            <ReferrerPicker
+              value={form}
+              excludeId={id}
+              onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
+            />
           </div>
         </section>
 

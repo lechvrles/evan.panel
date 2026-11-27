@@ -13,6 +13,7 @@ import {
   MapPin,
   CalendarClock,
   StickyNote,
+  UserPlus,
 } from "lucide-react";
 import { Image } from "@/components/ui/image";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,7 @@ export default function CustomerDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [customer, setCustomer] = useState(null);
+  const [referrer, setReferrer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [visitOpen, setVisitOpen] = useState(false);
@@ -53,6 +55,26 @@ export default function CustomerDetail() {
       active = false;
     };
   }, [id]);
+
+  useEffect(() => {
+    const rid = customer?.referrer_customer_id;
+    if (!rid) {
+      setReferrer(null);
+      return;
+    }
+    let active = true;
+    (async () => {
+      const { data } = await supabase
+        .from("customers")
+        .select("id, first_name, last_name")
+        .eq("id", rid)
+        .maybeSingle();
+      if (active) setReferrer(data || null);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [customer?.referrer_customer_id]);
 
   if (loading) {
     return (
@@ -158,6 +180,29 @@ export default function CustomerDetail() {
               <InfoRow icon={Mail} label="ایمیل" value={customer.email} />
               <InfoRow icon={FolderKanban} label="نام پروژه" value={customer.project_name} />
               <InfoRow icon={MapPin} label="موقعیت پروژه" value={customer.project_location} />
+              {(customer.referrer_customer_id || customer.referrer_name) && (
+                <InfoRow
+                  icon={UserPlus}
+                  label="شخص معرف"
+                  value={
+                    customer.referrer_customer_id ? (
+                      referrer ? (
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/customers/${referrer.id}`)}
+                          className="underline underline-offset-4 hover:opacity-80"
+                        >
+                          {referrer.first_name} {referrer.last_name}
+                        </button>
+                      ) : (
+                        "مشتری حذف‌شده"
+                      )
+                    ) : (
+                      customer.referrer_name
+                    )
+                  }
+                />
+              )}
               <InfoRow
                 icon={CalendarClock}
                 label="تاریخ ثبت"
