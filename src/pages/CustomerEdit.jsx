@@ -260,7 +260,6 @@ export default function CustomerEdit() {
           </div>
         </section>
 
-    /*{شخص معرف} */
         <section className="rounded-[28px] bg-card border border-border overflow-hidden shadow-sm">
           <div className="px-6 sm:px-8 py-5 border-b border-border bg-gradient-to-bl from-accent/60 to-transparent">
             <h2 className="font-heading text-lg sm:text-xl font-semibold tracking-tight">
